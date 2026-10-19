@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Lumière — styles.css
+   Hebelie — styles.css
    Marketing site + treatment studio
    ========================================================================== */
 
@@ -247,9 +247,18 @@ a { color: inherit; }
   align-items: center;
 }
 
+.slogan {
+  margin: 0 0 0.75rem;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 1.35rem;
+  line-height: 1.2;
+  color: var(--sage-dark);
+}
+
 .hero h1 {
-  font-size: clamp(3.1rem, 7vw, 5.4rem);
-  max-width: 11ch;
+  font-size: clamp(2.7rem, 5.6vw, 4.35rem);
+  max-width: 16ch;
 }
 
 .hero h1 em {

@@ -1,7 +1,7 @@
 "use strict";
 
 /* ==========================================================================
-   Lumière MedSpa — app.js
+   Hebelie — app.js
    1. Config & data
    2. Element refs & state
    3. Treatments
@@ -43,7 +43,7 @@ const UI_META = {
 };
 
 /* 2 · Element refs & state ------------------------------------------------- */
-const CACHE_KEY = "lumiere-preview-cache";
+const CACHE_KEY = "hebelie-preview-cache";
 
 const els = {
   camera:     document.getElementById("cameraInput"),
@@ -404,7 +404,7 @@ els.download.addEventListener("click", async () => {
     const blob = await (await fetch(current.url)).blob();
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "lumiere-preview-" + name + ".jpg";
+    a.download = "hebelie-preview-" + name + ".jpg";
     a.click();
     URL.revokeObjectURL(a.href);
   } catch (e) {
