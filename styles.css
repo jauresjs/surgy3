@@ -306,49 +306,19 @@ a { color: inherit; }
   color: var(--muted);
 }
 
-.hero-frame {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 3px;
-  margin: 0 -1.25rem;
-  background: #fff;
+.hero-slider {
+  width: calc(100% + 2.5rem);
+  max-width: none;
+  margin-left: -1.25rem;
+  margin-right: -1.25rem;
+  aspect-ratio: 3 / 4;
+  border-radius: 0 0 22px 22px;
+  border-top: 0;
+  border-left: 0;
+  border-right: 0;
 }
 
-.hero-pane {
-  position: relative;
-  margin: 0;
-  height: calc((100dvh - 68px) / 2 - 2px);
-  min-height: 190px;
-  overflow: hidden;
-  background: #e7e0d6;
-}
-
-.hero-pane img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center 18%;
-  display: block;
-}
-
-@media (max-width: 979px) {
-  .hero-frame { order: -1; }
-}
-
-.hero-pane figcaption {
-  position: absolute;
-  left: 12px;
-  bottom: 12px;
-  margin: 0;
-  padding: 0.28rem 0.65rem;
-  border-radius: 999px;
-  background: rgba(255, 252, 248, 0.88);
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--ink);
-}
+.hero-slider img { object-position: center 16%; }
 
 /* Studio ------------------------------------------------------------------ */
 .studio {
@@ -667,10 +637,10 @@ a { color: inherit; }
   -webkit-user-drag: none;
 }
 
-#afterImg {
+.frame img.is-after {
   position: absolute;
   inset: 0;
-  clip-path: inset(0 0 0 50%);
+  clip-path: inset(0 0 0 48%);
 }
 
 .frame-divider {
@@ -1075,25 +1045,14 @@ a { color: inherit; }
 @media (min-width: 980px) {
   .hero { padding: 3.2rem 0 1.5rem; }
   .hero-grid { gap: 2.2rem; }
-  .hero-frame {
-    grid-template-columns: 1fr 1fr;
-    align-items: start;
+  .hero-copy { order: 1; }
+  .hero-slider {
+    order: 2;
+    width: 100%;
     margin: 0;
-    border: 1px solid var(--border);
-    border-radius: 28px;
-    overflow: hidden;
-    box-shadow: var(--shadow);
-    background: #efe8e4;
-  }
-  .hero-pane {
-    height: auto;
-    min-height: 0;
-    background: #efe8e4;
-  }
-  .hero-pane img {
-    height: auto;
-    object-fit: contain;
-    object-position: center;
+    max-height: 760px;
+    border-radius: 18px;
+    border: 6px solid #fff;
   }
 }
 

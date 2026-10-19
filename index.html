@@ -107,6 +107,17 @@
 <main id="top">
   <section class="hero">
     <div class="wrap hero-grid">
+      <div class="frame hero-slider" id="heroSlider">
+        <img id="heroBefore" src="images/hero-before.jpg" alt="Before: a front-facing portrait with no treatment" width="1400" height="2200">
+        <img id="heroAfter" class="is-after" src="images/hero-after.jpg" alt="After: the same portrait with a smoother face and fuller lips" width="1400" height="1866">
+        <div class="frame-divider" id="heroDivider" aria-hidden="true"></div>
+        <button type="button" class="frame-handle" id="heroHandle" aria-label="Slide to compare before and after" aria-valuemin="0" aria-valuemax="100" aria-valuenow="48">
+          <svg width="7" height="10" viewBox="0 0 7 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 1 1.5 5 6 9"/></svg>
+          <svg width="7" height="10" viewBox="0 0 7 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m1 1 4.5 4L1 9"/></svg>
+        </button>
+        <span class="frame-badge left" id="heroBeforeBadge">Before</span>
+        <span class="frame-badge right" id="heroAfterBadge">After</span>
+      </div>
       <div class="hero-copy">
         <p class="kicker">Medspa preview studio</p>
         <h1>Preview the result <em>before</em> you book.</h1>
@@ -121,16 +132,6 @@
           <li>Up to 3 combined</li>
           <li>No account</li>
         </ul>
-      </div>
-      <div class="hero-frame">
-        <figure class="hero-pane">
-          <img src="images/hero-before.jpg" alt="Before: a front-facing portrait with no treatment" width="1200" height="1886">
-          <figcaption>Before</figcaption>
-        </figure>
-        <figure class="hero-pane">
-          <img src="images/hero-after.jpg" alt="After: the same portrait with a smoother, tighter face and fuller lips" width="1200" height="1600">
-          <figcaption>After</figcaption>
-        </figure>
       </div>
     </div>
   </section>
@@ -185,7 +186,7 @@
           <p class="step-label"><span>Result</span>Your preview</p>
           <div class="frame" id="sliderWrap">
             <img id="beforeImg" alt="Before">
-            <img id="afterImg" alt="After">
+            <img id="afterImg" class="is-after" alt="After">
             <div class="frame-divider" aria-hidden="true"></div>
             <button type="button" class="frame-handle" id="sliderHandle" aria-label="Slide to compare before and after">
               <svg width="7" height="10" viewBox="0 0 7 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 1 1.5 5 6 9"/></svg>
