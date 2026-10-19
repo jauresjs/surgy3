@@ -239,11 +239,11 @@ a { color: inherit; }
 }
 
 /* Hero -------------------------------------------------------------------- */
-.hero { padding: 3.2rem 0 1.5rem; }
+.hero { padding: 0 0 1.5rem; }
 
 .hero-grid {
   display: grid;
-  gap: 2.2rem;
+  gap: 1.35rem;
   align-items: center;
 }
 
@@ -308,44 +308,46 @@ a { color: inherit; }
 
 .hero-frame {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  min-height: 360px;
-  border: 1px solid var(--border);
-  border-radius: 28px;
-  overflow: hidden;
-  background: var(--paper);
-  box-shadow: var(--shadow);
-  position: relative;
+  grid-template-columns: 1fr;
+  gap: 3px;
+  margin: 0 -1.25rem;
+  background: #fff;
 }
 
 .hero-pane {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 1.1rem 1rem 1.2rem;
+  position: relative;
+  margin: 0;
+  height: calc((100dvh - 68px) / 2 - 2px);
+  min-height: 190px;
+  overflow: hidden;
+  background: #e7e0d6;
 }
 
-.hero-pane span {
+.hero-pane img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 18%;
+  display: block;
+}
+
+@media (max-width: 979px) {
+  .hero-frame { order: -1; }
+}
+
+.hero-pane figcaption {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  margin: 0;
+  padding: 0.28rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(255, 252, 248, 0.88);
   font-size: 0.68rem;
   font-weight: 600;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--muted);
-}
-
-.hero-pane-before { background: linear-gradient(180deg, #f7f3ee, #efe8df); }
-.hero-pane-after { background: linear-gradient(180deg, #f3f7f4, #e7f0ea); }
-
-.hero-pane svg { width: 100%; height: auto; margin-top: 1rem; }
-
-.hero-split {
-  position: absolute;
-  top: 12%;
-  bottom: 12%;
-  left: 50%;
-  width: 1px;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 0 0 4px rgba(255, 252, 248, 0.35);
+  color: var(--ink);
 }
 
 /* Studio ------------------------------------------------------------------ */
@@ -1068,6 +1070,31 @@ a { color: inherit; }
   .hero-grid, .studio-grid { grid-template-columns: 1.05fr 0.95fr; }
   .studio-grid .tool { margin: 0; max-width: none; }
   .band { margin: 0 auto 4rem; max-width: calc(var(--max) - 2.5rem); padding: 3rem 2rem; }
+}
+
+@media (min-width: 980px) {
+  .hero { padding: 3.2rem 0 1.5rem; }
+  .hero-grid { gap: 2.2rem; }
+  .hero-frame {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+    margin: 0;
+    border: 1px solid var(--border);
+    border-radius: 28px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    background: #efe8e4;
+  }
+  .hero-pane {
+    height: auto;
+    min-height: 0;
+    background: #efe8e4;
+  }
+  .hero-pane img {
+    height: auto;
+    object-fit: contain;
+    object-position: center;
+  }
 }
 
 @media (max-width: 800px) {
