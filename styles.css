@@ -297,24 +297,6 @@ a { color: inherit; }
   background: rgba(255, 252, 248, 0.7);
 }
 
-.metrics {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.55rem;
-  margin: 1.6rem 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.metrics li {
-  padding: 0.4rem 0.7rem;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: rgba(255, 252, 248, 0.65);
-  font-size: 0.78rem;
-  color: var(--muted);
-}
-
 .hero-slider {
   width: calc(100% + 2.5rem);
   max-width: none;
