@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lumière MedSpa · AI Preview</title>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+<!-- Tailwind (light styling framework, no build step) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        ivory:     '#f7f3ee',
+        paper:     '#fffdfa',
+        ink:       '#2f2c29',
+        muted:     '#94867e',
+        sage:      { light: '#edf3ef', DEFAULT: '#8fae9f', dark: '#6d8c7b' },
+        champagne: '#cdb9a0'
+      },
+      fontFamily: {
+        serif: ['"Cormorant Garamond"', 'serif'],
+        sans:  ['Inter', 'system-ui', 'sans-serif']
+      }
+    }
+  }
+};
+</script>
+
+<!-- App styles -->
+<link rel="stylesheet" href="styles.css">
+</head>
+<body class="font-sans text-ink">
+
+<!-- Ambient background -->
+<div class="bg-wash" aria-hidden="true"></div>
+<div class="grain" aria-hidden="true"></div>
+
+<!-- Header -->
+<header class="site-header">
+  <div class="monogram">L</div>
+  <p class="overline">Lumière MedSpa</p>
+  <h1 class="title">AI <em>Treatment</em> Preview</h1>
+  <p class="tagline">Visualize your results before you book</p>
+  <div class="ornament" aria-hidden="true"><span>✦</span></div>
+</header>
+
+<main>
+
+  <!-- Step 1 · Photo -->
+  <section class="card">
+    <p class="step-label"><span>Step 01</span>Your photo</p>
+    <label class="dropzone">
+      <span class="dz-icon">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M4 8a2 2 0 0 1 2-2h1.2l1.1-1.8A1 1 0 0 1 9.2 4h5.6a1 1 0 0 1 .9.5L16.8 6H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8Z"/>
+          <circle cx="12" cy="12.5" r="3.4"/>
+        </svg>
+      </span>
+      <strong>Take or upload a portrait</strong>
+      <em>A clear, front-facing photo works best</em>
+      <input type="file" id="cameraInput" accept="image/*" capture="user">
+      <input type="file" id="uploadInput" accept="image/*">
+    </label>
+    <img id="preview" class="photo-preview" alt="Your uploaded photo">
+  </section>
+
+  <!-- Step 2 · Treatment -->
+  <section class="card" id="treatmentCard">
+    <p class="step-label"><span>Step 02</span><span id="treatmentTitle">Choose treatment</span></p>
+    <div class="treatments" id="treatments"></div>
+    <p id="multiHint" class="multi-hint" hidden>You can generate a new preview with up to 3 treatments at once.</p>
+    <p id="selectionCount" class="selection-count" hidden></p>
+    <div class="intensity" role="group" aria-label="Preview intensity">
+      <span class="intensity-label">Intensity</span>
+      <div class="intensity-toggle">
+        <button type="button" class="intensity-btn" data-level="light" aria-pressed="false">Light</button>
+        <button type="button" class="intensity-btn selected" data-level="medium" aria-pressed="true">Medium</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Generate -->
+  <button id="generateBtn" class="btn-generate" disabled>Generate preview</button>
+  <p id="status" class="status" role="status"></p>
+
+  <!-- Result · single-frame before/after -->
+  <section class="card" id="resultWrap" hidden>
+    <p class="step-label"><span>Result</span>Your preview</p>
+    <div class="frame" id="sliderWrap">
+      <img id="beforeImg" alt="Before">
+      <img id="afterImg" alt="After">
+      <div class="frame-divider" aria-hidden="true"></div>
+      <button type="button" class="frame-handle" id="sliderHandle" aria-label="Slide to compare before and after">
+        <svg width="7" height="10" viewBox="0 0 7 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 1 1.5 5 6 9"/></svg>
+        <svg width="7" height="10" viewBox="0 0 7 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m1 1 4.5 4L1 9"/></svg>
+      </button>
+      <span class="frame-badge left" id="beforeBadge">Before</span>
+      <span class="frame-badge right" id="afterBadge">After</span>
+    </div>
+    <button id="downloadBtn" class="btn-save">Save result</button>
+
+    <div id="previewCache" class="preview-cache" hidden>
+      <p class="cache-label">Your previews</p>
+      <div id="cacheList" class="cache-list" role="list"></div>
+    </div>
+
+    <p id="comboNote" class="combo-note">You can generate a new preview with up to 3 treatments at once.</p>
+    <button id="againBtn" type="button" class="btn-again">Generate again</button>
+  </section>
+
+  <!-- Lead · shown after the first preview, does not hide the result -->
+  <section class="lead-card" id="leadWrap" hidden>
+    <p class="step-label"><span>Next</span>Get the best deal</p>
+    <p class="lead-copy">Share your details and we’ll reach out with the best place to get the best deal.</p>
+    <form id="leadForm">
+      <label class="field">Name
+        <input name="name" type="text" autocomplete="name" required>
+      </label>
+      <label class="field">Phone
+        <input name="phone" type="tel" autocomplete="tel" inputmode="tel">
+      </label>
+      <label class="field">Email
+        <input name="email" type="email" autocomplete="email">
+      </label>
+      <label class="field">City or ZIP
+        <input name="city" type="text" autocomplete="address-level2" required>
+      </label>
+      <label class="consent">
+        <input name="consent" type="checkbox" required>
+        <span>You can contact me about this preview.</span>
+      </label>
+      <p id="leadError" class="lead-error" hidden></p>
+      <button type="submit" class="btn-generate">Send info</button>
+    </form>
+    <div id="infoSent" class="info-sent" hidden role="status">Info sent</div>
+  </section>
+
+</main>
+
+<p class="disclaimer">AI-generated simulation for illustration only. Actual results vary — consult a licensed professional.</p>
+
+<script src="prompts.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
