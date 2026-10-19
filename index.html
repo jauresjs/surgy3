@@ -3,149 +3,372 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Lumière MedSpa · AI Preview</title>
-
-<!-- Fonts -->
+<title>Lumière — Preview medspa results before you book</title>
+<meta name="description" content="Preview lip filler, Botox, skin, and other medspa treatments on your own photo. Compare before and after, then ask Lumière where to find a strong local option.">
+<meta name="robots" content="index, follow">
+<meta name="author" content="Lumière">
+<meta name="theme-color" content="#f3efe8">
+<link rel="canonical" href="./">
+<meta property="og:site_name" content="Lumière">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Lumière — Preview medspa results before you book">
+<meta property="og:description" content="A private studio for seeing a medspa treatment on your own photo before you book.">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Lumière — Preview medspa results before you book">
+<meta name="twitter:description" content="See a treatment on your own photo, then ask where to go for a strong option.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='32' fill='%23f3efe8'/%3E%3Ctext x='32' y='42' text-anchor='middle' font-family='Georgia' font-size='34' fill='%235e7e6e'%3EL%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-
-<!-- Tailwind (light styling framework, no build step) -->
-<script src="https://cdn.tailwindcss.com"></script>
-<script>
-tailwind.config = {
-  theme: {
-    extend: {
-      colors: {
-        ivory:     '#f7f3ee',
-        paper:     '#fffdfa',
-        ink:       '#2f2c29',
-        muted:     '#94867e',
-        sage:      { light: '#edf3ef', DEFAULT: '#8fae9f', dark: '#6d8c7b' },
-        champagne: '#cdb9a0'
-      },
-      fontFamily: {
-        serif: ['"Cormorant Garamond"', 'serif'],
-        sans:  ['Inter', 'system-ui', 'sans-serif']
-      }
-    }
-  }
-};
-</script>
-
-<!-- App styles -->
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Outfit:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "name": "Lumière",
+      "description": "Lumière is a preview studio for medspa treatments. Visitors compare a simulated result on their own photo, then can ask for a follow-up about where to go.",
+      "slogan": "Preview the result before you book."
+    },
+    {
+      "@type": "WebSite",
+      "name": "Lumière",
+      "description": "Preview medspa treatments on your own photo before you book.",
+      "inLanguage": "en"
+    },
+    {
+      "@type": "SoftwareApplication",
+      "name": "Lumière Treatment Preview",
+      "applicationCategory": "HealthApplication",
+      "operatingSystem": "Web",
+      "description": "Upload a portrait, preview one medspa treatment, then generate again with up to three treatments.",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Is the preview my actual result?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. It is an AI illustration on your photo so you can compare a direction. A licensed professional still has to examine you, and real results vary."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I need an account?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. You can generate a preview without creating an account. Contact details are optional and only asked after the first preview."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I preview more than one treatment?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The first preview is a single treatment. After that, you can generate again with one, two, or three treatments at once. Earlier previews stay available during the visit."
+          }
+        }
+      ]
+    }
+  ]
+}
+</script>
 </head>
-<body class="font-sans text-ink">
-
-<!-- Ambient background -->
+<body>
+<a class="skip" href="#studio">Skip to the preview studio</a>
 <div class="bg-wash" aria-hidden="true"></div>
 <div class="grain" aria-hidden="true"></div>
 
-<!-- Header -->
-<header class="site-header">
-  <div class="monogram">L</div>
-  <p class="overline">Lumière MedSpa</p>
-  <h1 class="title">AI <em>Treatment</em> Preview</h1>
-  <p class="tagline">Visualize your results before you book</p>
-  <div class="ornament" aria-hidden="true"><span>✦</span></div>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="./#top"><span class="monogram" aria-hidden="true">L</span><em>Lumière</em></a>
+    <input class="nav-toggle" type="checkbox" id="navToggle" tabindex="-1">
+    <label class="nav-burger" for="navToggle" aria-label="Open menu"><span></span></label>
+    <nav class="nav-links" aria-label="Primary">
+      <a href="#method">How it works</a>
+      <a href="#about">About</a>
+      <a href="#journal">Journal</a>
+      <a class="nav-cta" href="#studio">Start preview</a>
+    </nav>
+  </div>
 </header>
 
-<main>
-
-  <!-- Step 1 · Photo -->
-  <section class="card">
-    <p class="step-label"><span>Step 01</span>Your photo</p>
-    <label class="dropzone">
-      <span class="dz-icon">
-        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M4 8a2 2 0 0 1 2-2h1.2l1.1-1.8A1 1 0 0 1 9.2 4h5.6a1 1 0 0 1 .9.5L16.8 6H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8Z"/>
-          <circle cx="12" cy="12.5" r="3.4"/>
-        </svg>
-      </span>
-      <strong>Take or upload a portrait</strong>
-      <em>A clear, front-facing photo works best</em>
-      <input type="file" id="cameraInput" accept="image/*" capture="user">
-      <input type="file" id="uploadInput" accept="image/*">
-    </label>
-    <img id="preview" class="photo-preview" alt="Your uploaded photo">
-  </section>
-
-  <!-- Step 2 · Treatment -->
-  <section class="card" id="treatmentCard">
-    <p class="step-label"><span>Step 02</span><span id="treatmentTitle">Choose treatment</span></p>
-    <div class="treatments" id="treatments"></div>
-    <p id="multiHint" class="multi-hint" hidden>You can generate a new preview with up to 3 treatments at once.</p>
-    <p id="selectionCount" class="selection-count" hidden></p>
-    <div class="intensity" role="group" aria-label="Preview intensity">
-      <span class="intensity-label">Intensity</span>
-      <div class="intensity-toggle">
-        <button type="button" class="intensity-btn" data-level="light" aria-pressed="false">Light</button>
-        <button type="button" class="intensity-btn selected" data-level="medium" aria-pressed="true">Medium</button>
+<main id="top">
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div>
+        <p class="kicker">Medspa preview studio</p>
+        <h1>Preview the result <em>before</em> you book.</h1>
+        <p class="lede">Lumière puts a medspa treatment on your own portrait, so you can compare a direction before you sit down with anyone. Start with one change. Then look at a combination of up to three.</p>
+        <div class="hero-actions">
+          <a class="btn-primary" href="#studio">Start a preview</a>
+          <a class="btn-ghost" href="#method">See how it works</a>
+        </div>
+        <ul class="metrics">
+          <li>8 treatments</li>
+          <li>Light or medium</li>
+          <li>Up to 3 combined</li>
+          <li>No account</li>
+        </ul>
+      </div>
+      <div class="hero-frame" aria-hidden="true">
+        <div class="hero-pane hero-pane-before">
+          <span>Before</span>
+          <svg viewBox="0 0 200 280" fill="none" stroke="#8a7d72" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M100 28c32 0 52 24 54 54 2 34-8 58-22 74 18 14 34 40 30 78H38c-4-38 12-64 30-78-14-16-24-40-22-74 2-30 22-54 54-54Z" fill="rgba(138,125,114,0.06)"/>
+            <path d="M86 154h28" />
+          </svg>
+        </div>
+        <div class="hero-pane hero-pane-after">
+          <span>After · lip filler</span>
+          <svg viewBox="0 0 200 280" fill="none" stroke="#5e7e6e" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M100 28c32 0 52 24 54 54 2 34-8 58-22 74 18 14 34 40 30 78H38c-4-38 12-64 30-78-14-16-24-40-22-74 2-30 22-54 54-54Z" fill="rgba(94,126,110,0.08)"/>
+            <path d="M78 148c8 8 36 8 44 0 4 10-6 18-22 18s-26-8-22-18Z" fill="rgba(94,126,110,0.16)"/>
+            <path d="M128 152h34" />
+            <text x="132" y="146" fill="#5e7e6e" stroke="none" font-family="Outfit, sans-serif" font-size="11" font-weight="600">Volume</text>
+          </svg>
+        </div>
+        <div class="hero-split"></div>
       </div>
     </div>
   </section>
 
-  <!-- Generate -->
-  <button id="generateBtn" class="btn-generate" disabled>Generate preview</button>
-  <p id="status" class="status" role="status"></p>
+  <section class="section studio" id="studio">
+    <div class="wrap studio-grid">
+      <aside class="studio-aside">
+        <p class="kicker">The studio</p>
+        <h2>A private first look, then a way to follow up.</h2>
+        <p class="lede">The preview stays on this page. If you generate again, earlier results stay in a strip under the image so you can open them.</p>
+        <ol class="studio-steps">
+          <li><b>1</b><p><strong>One clear portrait.</strong> Front-facing, in even light, with your usual expression.</p></li>
+          <li><b>2</b><p><strong>One treatment.</strong> Choose light or medium and generate a single change.</p></li>
+          <li><b>3</b><p><strong>Then a combination.</strong> Generate again with one, two, or three treatments together.</p></li>
+          <li><b>4</b><p><strong>A next step, if you want one.</strong> Leave a name, a phone or email, and your city.</p></li>
+        </ol>
+      </aside>
 
-  <!-- Result · single-frame before/after -->
-  <section class="card" id="resultWrap" hidden>
-    <p class="step-label"><span>Result</span>Your preview</p>
-    <div class="frame" id="sliderWrap">
-      <img id="beforeImg" alt="Before">
-      <img id="afterImg" alt="After">
-      <div class="frame-divider" aria-hidden="true"></div>
-      <button type="button" class="frame-handle" id="sliderHandle" aria-label="Slide to compare before and after">
-        <svg width="7" height="10" viewBox="0 0 7 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 1 1.5 5 6 9"/></svg>
-        <svg width="7" height="10" viewBox="0 0 7 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m1 1 4.5 4L1 9"/></svg>
-      </button>
-      <span class="frame-badge left" id="beforeBadge">Before</span>
-      <span class="frame-badge right" id="afterBadge">After</span>
+      <div class="tool">
+        <section class="card">
+          <p class="step-label"><span>Step 01</span>Your photo</p>
+          <div class="photo-actions">
+            <label class="photo-btn">Take a photo
+              <input type="file" id="cameraInput" accept="image/*" capture="user">
+            </label>
+            <label class="photo-btn">Upload a portrait
+              <input type="file" id="uploadInput" accept="image/*">
+            </label>
+          </div>
+          <p class="photo-note">A clear, front-facing photo works best. It is resized on your device.</p>
+          <img id="preview" class="photo-preview" alt="Your uploaded portrait">
+        </section>
+
+        <section class="card" id="treatmentCard">
+          <p class="step-label"><span>Step 02</span><span id="treatmentTitle">Choose treatment</span></p>
+          <div class="treatments" id="treatments"></div>
+          <p id="multiHint" class="multi-hint" hidden>You can generate a new preview with up to 3 treatments at once.</p>
+          <p id="selectionCount" class="selection-count" hidden></p>
+          <div class="intensity" role="group" aria-label="Preview intensity">
+            <span class="intensity-label">Intensity</span>
+            <div class="intensity-toggle">
+              <button type="button" class="intensity-btn" data-level="light" aria-pressed="false">Light</button>
+              <button type="button" class="intensity-btn selected" data-level="medium" aria-pressed="true">Medium</button>
+            </div>
+          </div>
+        </section>
+
+        <button id="generateBtn" class="btn-generate" disabled>Generate preview</button>
+        <p id="status" class="status" role="status"></p>
+
+        <section class="card" id="resultWrap" hidden>
+          <p class="step-label"><span>Result</span>Your preview</p>
+          <div class="frame" id="sliderWrap">
+            <img id="beforeImg" alt="Before">
+            <img id="afterImg" alt="After">
+            <div class="frame-divider" aria-hidden="true"></div>
+            <button type="button" class="frame-handle" id="sliderHandle" aria-label="Slide to compare before and after">
+              <svg width="7" height="10" viewBox="0 0 7 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 1 1.5 5 6 9"/></svg>
+              <svg width="7" height="10" viewBox="0 0 7 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m1 1 4.5 4L1 9"/></svg>
+            </button>
+            <span class="frame-badge left" id="beforeBadge">Before</span>
+            <span class="frame-badge right" id="afterBadge">After</span>
+          </div>
+          <button id="downloadBtn" class="btn-save">Save result</button>
+          <div id="previewCache" class="preview-cache" hidden>
+            <p class="cache-label">Your previews</p>
+            <div id="cacheList" class="cache-list" role="list"></div>
+          </div>
+          <p id="comboNote" class="combo-note">You can generate a new preview with up to 3 treatments at once.</p>
+          <button id="againBtn" type="button" class="btn-again">Generate again</button>
+        </section>
+
+        <section class="lead-card" id="leadWrap" hidden>
+          <p class="step-label"><span>Next</span>Get the best deal</p>
+          <p class="lead-copy">Share your details and we’ll reach out with the best place to get the best deal.</p>
+          <form id="leadForm">
+            <label class="field">Name
+              <input name="name" type="text" autocomplete="name" required>
+            </label>
+            <label class="field">Phone
+              <input name="phone" type="tel" autocomplete="tel" inputmode="tel">
+            </label>
+            <label class="field">Email
+              <input name="email" type="email" autocomplete="email">
+            </label>
+            <label class="field">City or ZIP
+              <input name="city" type="text" autocomplete="address-level2" required>
+            </label>
+            <label class="consent">
+              <input name="consent" type="checkbox" required>
+              <span>You can contact me about this preview.</span>
+            </label>
+            <p id="leadError" class="lead-error" hidden></p>
+            <button type="submit" class="btn-generate">Send info</button>
+          </form>
+          <div id="infoSent" class="info-sent" hidden role="status">Info sent</div>
+        </section>
+      </div>
     </div>
-    <button id="downloadBtn" class="btn-save">Save result</button>
-
-    <div id="previewCache" class="preview-cache" hidden>
-      <p class="cache-label">Your previews</p>
-      <div id="cacheList" class="cache-list" role="list"></div>
-    </div>
-
-    <p id="comboNote" class="combo-note">You can generate a new preview with up to 3 treatments at once.</p>
-    <button id="againBtn" type="button" class="btn-again">Generate again</button>
   </section>
 
-  <!-- Lead · shown after the first preview, does not hide the result -->
-  <section class="lead-card" id="leadWrap" hidden>
-    <p class="step-label"><span>Next</span>Get the best deal</p>
-    <p class="lead-copy">Share your details and we’ll reach out with the best place to get the best deal.</p>
-    <form id="leadForm">
-      <label class="field">Name
-        <input name="name" type="text" autocomplete="name" required>
-      </label>
-      <label class="field">Phone
-        <input name="phone" type="tel" autocomplete="tel" inputmode="tel">
-      </label>
-      <label class="field">Email
-        <input name="email" type="email" autocomplete="email">
-      </label>
-      <label class="field">City or ZIP
-        <input name="city" type="text" autocomplete="address-level2" required>
-      </label>
-      <label class="consent">
-        <input name="consent" type="checkbox" required>
-        <span>You can contact me about this preview.</span>
-      </label>
-      <p id="leadError" class="lead-error" hidden></p>
-      <button type="submit" class="btn-generate">Send info</button>
-    </form>
-    <div id="infoSent" class="info-sent" hidden role="status">Info sent</div>
+  <section class="section" id="method">
+    <div class="wrap">
+      <p class="kicker">How it works</p>
+      <h2>Three quiet steps. No account.</h2>
+      <div class="method-grid">
+        <article class="method-card">
+          <span>01</span>
+          <h3>Bring a portrait</h3>
+          <p>Use the camera or a photo you already have. Even light and a straight-on angle keep the comparison honest.</p>
+        </article>
+        <article class="method-card">
+          <span>02</span>
+          <h3>Name the change</h3>
+          <p>Pick a treatment and an intensity. The first generation shows that one change, so you can read it on its own.</p>
+        </article>
+        <article class="method-card">
+          <span>03</span>
+          <h3>Decide what to ask</h3>
+          <p>Slide between before and after, save the image, and generate again if you want to see treatments together.</p>
+        </article>
+      </div>
+    </div>
   </section>
 
+  <section class="section" id="treatments" style="padding-top:0">
+    <div class="wrap">
+      <p class="kicker">Treatments</p>
+      <h2>What you can preview.</h2>
+      <p class="lede">Each option is limited to its own area. The preview is a simulation for comparison, not a treatment plan.</p>
+      <ul class="catalog">
+        <li><strong>Lip filler</strong><span>Volume and border, in your lip shape</span></li>
+        <li><strong>Cheek filler</strong><span>Lift and volume over the cheekbones</span></li>
+        <li><strong>Botox</strong><span>Smoother forehead and outer eyes</span></li>
+        <li><strong>Jawline contour</strong><span>A sharper edge, same face width</span></li>
+        <li><strong>Skin rejuvenation</strong><span>Tone and redness, texture kept</span></li>
+        <li><strong>Brow lift</strong><span>A small raise of the brows only</span></li>
+        <li><strong>Facelift</strong><span>A fuller lift of face, jaw, and neck</span></li>
+        <li><strong>Rhinoplasty</strong><span>A refined tip and bridge</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section" id="about">
+    <div class="wrap about-grid">
+      <div>
+        <p class="kicker">About</p>
+        <h2>A studio for the decision, not the procedure.</h2>
+        <p class="lede">Lumière exists for the moment before a booking, when you want to see a direction on your own face and then talk to someone qualified.</p>
+      </div>
+      <div class="about-panel">
+        <p>You stay in control of the first look. The portrait is used to build the preview in this visit. Saved results remain on this device so you can reopen them, including after a refresh, until you upload a different photo.</p>
+        <p style="margin-top:0.8rem">If you want a follow-up, the form asks for a name, a phone or email, and a city. That is so a conversation can point toward a place that fits the treatments you actually previewed. Sending your details shows a confirmation on the page.</p>
+        <p style="margin-top:0.8rem">Lumière does not replace a consult. Injectors, surgeons, and licensing rules are local. Bring the preview as a question, not as an order.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="journal">
+    <div class="wrap">
+      <p class="kicker">Journal</p>
+      <h2>Notes before you book.</h2>
+      <p class="lede">Two short pieces from the studio on how to read a preview, and what to ask when filler is the treatment you are considering.</p>
+      <div class="post-grid">
+        <a class="post-card" href="blog/how-to-read-an-ai-preview.html">
+          <time datetime="2026-09-04">September 4, 2026</time>
+          <h3>How to read an AI treatment preview</h3>
+          <p>What the slider is showing, why the first pass is a single treatment, and how to use light versus medium.</p>
+          <span class="more">Read the note</span>
+        </a>
+        <a class="post-card" href="blog/questions-before-filler.html">
+          <time datetime="2026-09-18">September 18, 2026</time>
+          <h3>Questions worth asking before you book filler</h3>
+          <p>A short list to take into a consult, including how a combination preview can sharpen the conversation.</p>
+          <span class="more">Read the note</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="faq" style="padding-top:0">
+    <div class="wrap">
+      <p class="kicker">Questions</p>
+      <h2>Before you upload a photo.</h2>
+      <div class="faq-list">
+        <article class="faq-item">
+          <h3>Is the preview my actual result?</h3>
+          <p>No. It is an illustration on your photo so you can compare a direction. Healing, product, and technique change the real outcome. A licensed professional has to examine you.</p>
+        </article>
+        <article class="faq-item">
+          <h3>Do I need an account?</h3>
+          <p>No. Generate without signing up. Your details are asked only after the first preview, and only if you want a follow-up.</p>
+        </article>
+        <article class="faq-item">
+          <h3>Can I look at more than one treatment?</h3>
+          <p>The first generation is one treatment. After that, generate again with up to three at once. Earlier previews stay in the strip under the result.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="band">
+    <h2>Start with one treatment.</h2>
+    <p>You can combine others on the next generation. The portrait never requires an account.</p>
+    <a class="btn-primary" href="#studio">Open the studio</a>
+  </section>
 </main>
 
-<p class="disclaimer">AI-generated simulation for illustration only. Actual results vary — consult a licensed professional.</p>
+<footer class="site-footer">
+  <div class="footer-grid">
+    <div>
+      <a class="brand" href="./#top"><span class="monogram" aria-hidden="true">L</span><em>Lumière</em></a>
+      <p style="margin-top:0.8rem">A preview studio for medspa decisions. See a direction on your own photo, then ask where to go.</p>
+    </div>
+    <div>
+      <h2>Studio</h2>
+      <a href="#studio">Start a preview</a>
+      <a href="#method">How it works</a>
+      <a href="#about">About</a>
+      <a href="#faq">Questions</a>
+    </div>
+    <div>
+      <h2>Journal</h2>
+      <a href="blog/how-to-read-an-ai-preview.html">How to read a preview</a>
+      <a href="blog/questions-before-filler.html">Questions before filler</a>
+    </div>
+  </div>
+  <p class="legal">AI-generated simulation for illustration only. Actual results vary. Consult a licensed professional before any treatment. Lumière does not provide medical advice.</p>
+</footer>
 
+<script src="site.js"></script>
 <script src="prompts.js"></script>
 <script src="app.js"></script>
 </body>
