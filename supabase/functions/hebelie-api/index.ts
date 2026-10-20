@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { HttpError, login, me, signup } from "./auth.ts";
 import { TREATMENTS, buildRequest } from "./prompts.ts";
 
 const cors = {
@@ -145,13 +146,18 @@ Deno.serve(async (req) => {
     const supabase = db();
     if (req.method === "POST" && path === "/generate") return await generate(req, supabase);
     if (req.method === "POST" && path === "/leads") return await saveLead(req, supabase);
+    if (req.method === "POST" && path === "/auth/signup") return await signup(supabase, await readJson(req), cors);
+    if (req.method === "POST" && path === "/auth/login") return await login(supabase, await readJson(req), cors);
+    if (req.method === "GET" && path === "/auth/me") return await me(supabase, req, cors);
     if (req.method === "POST" && path === "/admin/login") return await adminLogin(req, supabase);
     if (req.method === "GET" && path === "/admin/leads") return await adminLeads(req, supabase);
     if (req.method === "GET" && path === "/admin/media") return await adminMedia(req, supabase);
     return json(404, { error: "Not found" });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Something went wrong";
-    const status = /Choose|Use a JPEG|too large|could not be read|complete|phone|email|preview first|Start again/.test(message) ? 400 : 500;
+    const status = err instanceof HttpError
+      ? err.status
+      : /Choose|Use a JPEG|too large|could not be read|complete|phone|email|preview first|Start again/.test(message) ? 400 : 500;
     return json(status, { error: message });
   }
 });
