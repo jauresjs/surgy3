@@ -126,12 +126,27 @@ a { color: inherit; }
   color: var(--sage-dark);
 }
 
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1;
+}
+
 .brand em {
   font-family: var(--font-serif);
   font-style: italic;
   font-weight: 500;
   font-size: 1.35rem;
   letter-spacing: 0;
+}
+
+.brand-slogan {
+  margin-top: 0.18rem;
+  font-size: 0.68rem;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--muted);
 }
 
 .nav-toggle {
@@ -245,15 +260,6 @@ a { color: inherit; }
   display: grid;
   gap: 1.35rem;
   align-items: center;
-}
-
-.slogan {
-  margin: 0 0 0.75rem;
-  font-family: var(--font-serif);
-  font-style: italic;
-  font-size: 1.35rem;
-  line-height: 1.2;
-  color: var(--sage-dark);
 }
 
 .hero h1 {
