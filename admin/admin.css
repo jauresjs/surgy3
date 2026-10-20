@@ -49,4 +49,5 @@
 .auth-switch { margin: 1rem 0 0; color: var(--muted); font-size: 0.92rem; }
 .auth-switch a { color: var(--ink); }
 .desk-success .lede { margin: 0; }
+.desk-signout { margin-top: 1rem; }
 #signOut { padding: 0.45rem 0.8rem; }
