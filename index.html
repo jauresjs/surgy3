@@ -136,7 +136,7 @@
         <h2>A private first look, then a way to follow up.</h2>
         <p class="lede">The preview stays on this page. If you generate again, earlier results stay in a strip under the image so you can open them.</p>
         <ol class="studio-steps">
-          <li><b>1</b><p><strong>One treatment.</strong> Choose light or medium and generate a single change.</p></li>
+          <li><b>1</b><p><strong>One treatment.</strong> Choose one and generate a single change.</p></li>
           <li><b>2</b><p><strong>One clear portrait.</strong> Front-facing, in even light, with your usual expression.</p></li>
           <li><b>3</b><p><strong>Then a combination.</strong> Generate again with one, two, or three treatments together.</p></li>
           <li><b>4</b><p><strong>A next step, if you want one.</strong> Leave a name, a phone or email, and your city.</p></li>
@@ -145,20 +145,16 @@
 
       <div class="tool">
         <section class="card" id="treatmentCard">
-          <p class="step-label"><span>Step 01</span><span id="treatmentTitle">Choose treatment</span></p>
+          <div class="card-head">
+            <p class="step-label"><span>Step 01</span><span id="treatmentTitle">Choose treatment</span></p>
+            <button type="button" id="treatmentNext" class="btn-next" hidden>Next</button>
+          </div>
           <div class="treatments" id="treatments"></div>
           <p id="multiHint" class="multi-hint" hidden>You can generate a new preview with up to 3 treatments at once.</p>
           <p id="selectionCount" class="selection-count" hidden></p>
-          <div class="intensity" role="group" aria-label="Preview intensity">
-            <span class="intensity-label">Intensity</span>
-            <div class="intensity-toggle">
-              <button type="button" class="intensity-btn" data-level="light" aria-pressed="false">Light</button>
-              <button type="button" class="intensity-btn selected" data-level="medium" aria-pressed="true">Medium</button>
-            </div>
-          </div>
         </section>
 
-        <section class="card">
+        <section class="card" id="photoCard">
           <p class="step-label"><span>Step 02</span>Your photo</p>
           <div class="photo-actions">
             <label class="photo-btn">Take a photo
@@ -234,7 +230,7 @@
         <article class="method-card">
           <span>01</span>
           <h3>Name the change</h3>
-          <p>Pick a treatment and an intensity. The first generation shows that one change, so you can read it on its own.</p>
+          <p>Pick a treatment. The first generation shows that one change, so you can read it on its own.</p>
         </article>
         <article class="method-card">
           <span>02</span>
@@ -292,7 +288,7 @@
         <a class="post-card" href="blog/how-to-read-an-ai-preview.html">
           <time datetime="2026-09-04">September 4, 2026</time>
           <h3>How to read an AI treatment preview</h3>
-          <p>What the slider is showing, why the first pass is a single treatment, and how to use light versus medium.</p>
+          <p>What the slider is showing, and why the first pass is a single treatment.</p>
           <span class="more">Read the note</span>
         </a>
         <a class="post-card" href="blog/questions-before-filler.html">

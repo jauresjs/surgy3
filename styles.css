@@ -393,10 +393,31 @@ a { color: inherit; }
   background: var(--paper);
 }
 
+.card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
 .step-label {
   margin: 0 0 0.8rem;
   font-size: 0.98rem;
   font-weight: 600;
+}
+
+.btn-next {
+  flex: none;
+  margin-top: 0.15rem;
+  padding: 0.42rem 0.9rem;
+  border: none;
+  border-radius: 999px;
+  background: var(--sage-dark);
+  color: #fff;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .step-label span:first-child {
@@ -542,43 +563,6 @@ a { color: inherit; }
   text-transform: uppercase;
   color: var(--sage-dark);
 }
-
-.intensity {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 0.85rem;
-}
-
-.intensity-label {
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.intensity-toggle {
-  display: flex;
-  padding: 3px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: #fff;
-}
-
-.intensity-btn {
-  padding: 0.32rem 0.85rem;
-  border: none;
-  border-radius: 999px;
-  background: transparent;
-  font-family: inherit;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--muted);
-  cursor: pointer;
-}
-
-.intensity-btn.selected { background: var(--sage-dark); color: #fff; }
 
 .btn-generate {
   width: 100%;
@@ -1033,7 +1017,7 @@ a { color: inherit; }
   line-height: 1.5;
 }
 
-#studio, #treatmentCard, #method, #about, #journal, #faq { scroll-margin-top: 84px; }
+#studio, #treatmentCard, #photoCard, #method, #about, #journal, #faq { scroll-margin-top: 84px; }
 
 #faq { display: none; }
 .site-footer a.desktop-only { display: none; }

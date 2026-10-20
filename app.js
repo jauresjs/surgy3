@@ -51,6 +51,7 @@ const els = {
   preview:    document.getElementById("preview"),
   treatments: document.getElementById("treatments"),
   treatmentTitle: document.getElementById("treatmentTitle"),
+  treatmentNext: document.getElementById("treatmentNext"),
   multiHint:  document.getElementById("multiHint"),
   selectionCount: document.getElementById("selectionCount"),
   generate:   document.getElementById("generateBtn"),
@@ -134,18 +135,10 @@ function enterMultiMode() {
   updateGenerateState();
 }
 
-/* Intensity toggle (light / medium) */
-let selectedIntensity = "medium";
-document.querySelectorAll(".intensity-btn").forEach(b => {
-  b.addEventListener("click", () => {
-    document.querySelectorAll(".intensity-btn").forEach(x => {
-      x.classList.remove("selected");
-      x.setAttribute("aria-pressed", "false");
-    });
-    b.classList.add("selected");
-    b.setAttribute("aria-pressed", "true");
-    selectedIntensity = b.dataset.level;
-  });
+const selectedIntensity = "medium";
+
+els.treatmentNext.addEventListener("click", () => {
+  document.getElementById("photoCard").scrollIntoView({ behavior: "smooth", block: "start" });
 });
 
 /* 4 · Photo handling ------------------------------------------------------- */
@@ -192,6 +185,7 @@ els.upload.addEventListener("change", e => handleFile(e.target.files[0]));
 /* 5 · Status helpers ------------------------------------------------------- */
 function updateGenerateState() {
   const n = selectedTreatments.length;
+  els.treatmentNext.hidden = n < 1;
   els.generate.disabled = !(photoDataUrl && n >= 1 && n <= 3);
   if (!multiMode) return;
   els.selectionCount.hidden = false;
