@@ -1,7 +1,7 @@
 "use strict";
 
 /* ==========================================================================
-   Lumière MedSpa — app.js
+   Hebelie — app.js
    1. Config & data
    2. Element refs & state
    3. Treatments
@@ -15,8 +15,7 @@
    ========================================================================== */
 
 /* 1 · Config & data -------------------------------------------------------- */
-const FAL_KEY = "18be2299-a2fc-4d7b-ac51-b5add57c9c85:7a9109cf6a619956919d4de5d2e9016a";
-const FAL_ENDPOINT = "https://fal.run/fal-ai/nano-banana/edit";
+const HEBELIE_API = "https://qqrcxbmbulfsvgbqjngz.supabase.co/functions/v1/hebelie-api";
 
 /* Line-icon helper (24×24, stroke) */
 const SVG = d => `<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
@@ -43,7 +42,7 @@ const UI_META = {
 };
 
 /* 2 · Element refs & state ------------------------------------------------- */
-const CACHE_KEY = "lumiere-preview-cache";
+const CACHE_KEY = "hebelie-preview-cache";
 
 const els = {
   camera:     document.getElementById("cameraInput"),
@@ -51,6 +50,7 @@ const els = {
   preview:    document.getElementById("preview"),
   treatments: document.getElementById("treatments"),
   treatmentTitle: document.getElementById("treatmentTitle"),
+  treatmentNext: document.getElementById("treatmentNext"),
   multiHint:  document.getElementById("multiHint"),
   selectionCount: document.getElementById("selectionCount"),
   generate:   document.getElementById("generateBtn"),
@@ -74,6 +74,7 @@ const els = {
 };
 
 let photoDataUrl = null;
+let sessionId = null;
 let selectedTreatments = [];
 let multiMode = false;
 let previews = [];
@@ -134,18 +135,8 @@ function enterMultiMode() {
   updateGenerateState();
 }
 
-/* Intensity toggle (light / medium) */
-let selectedIntensity = "medium";
-document.querySelectorAll(".intensity-btn").forEach(b => {
-  b.addEventListener("click", () => {
-    document.querySelectorAll(".intensity-btn").forEach(x => {
-      x.classList.remove("selected");
-      x.setAttribute("aria-pressed", "false");
-    });
-    b.classList.add("selected");
-    b.setAttribute("aria-pressed", "true");
-    selectedIntensity = b.dataset.level;
-  });
+els.treatmentNext.addEventListener("click", () => {
+  document.getElementById("photoCard").scrollIntoView({ behavior: "smooth", block: "start" });
 });
 
 /* 4 · Photo handling ------------------------------------------------------- */
@@ -173,6 +164,7 @@ function handleFile(file) {
         previews = [];
         activePreviewId = null;
         resultUrl = null;
+        sessionId = null;
         els.resultWrap.hidden = true;
         renderCache();
         persistCache();
@@ -192,6 +184,7 @@ els.upload.addEventListener("change", e => handleFile(e.target.files[0]));
 /* 5 · Status helpers ------------------------------------------------------- */
 function updateGenerateState() {
   const n = selectedTreatments.length;
+  els.treatmentNext.hidden = n < 1;
   els.generate.disabled = !(photoDataUrl && n >= 1 && n <= 3);
   if (!multiMode) return;
   els.selectionCount.hidden = false;
@@ -317,6 +310,7 @@ function persistCache() {
   try {
     sessionStorage.setItem(CACHE_KEY, JSON.stringify({
       photoDataUrl,
+      sessionId,
       multiMode,
       leadSent,
       activePreviewId,
@@ -337,6 +331,7 @@ function restoreCache() {
   if (!saved || !saved.photoDataUrl || !Array.isArray(saved.previews) || !saved.previews.length) return;
 
   photoDataUrl = saved.photoDataUrl;
+  sessionId = saved.sessionId || null;
   els.preview.src = photoDataUrl;
   els.preview.style.display = "block";
   previews = saved.previews;
@@ -354,32 +349,31 @@ function restoreCache() {
   updateGenerateState();
 }
 
-/* 8 · Generate (fal.ai) ---------------------------------------------------- */
+/* 8 · Generate ---------------------------------------------------------------- */
 els.generate.addEventListener("click", async () => {
   if (!photoDataUrl || !selectedTreatments.length) return;
   const batch = selectedTreatments.slice();
-  const intensity = selectedIntensity;
   els.generate.disabled = true;
   setStatus("Generating your preview…", true);
   try {
-    const res = await fetch(FAL_ENDPOINT, {
+    const res = await fetch(HEBELIE_API + "/generate", {
       method: "POST",
-      headers: { "Authorization": "Key " + FAL_KEY, "Content-Type": "application/json" },
-      body: JSON.stringify(buildRequest(batch.map(t => t.id), intensity, photoDataUrl))
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        imageDataUrl: photoDataUrl,
+        treatmentIds: batch.map(t => t.id),
+        sessionId
+      })
     });
-    if (!res.ok) {
-      const err = await res.text();
-      throw new Error("Generation error " + res.status + ": " + err.slice(0, 200));
-    }
-    const data = await res.json();
-    const url = data && data.images && data.images[0] && data.images[0].url;
-    if (!url) throw new Error("No image returned");
+    const data = await res.json().catch(() => ({}));
+    if (data.sessionId) sessionId = data.sessionId;
+    if (!res.ok || !data.resultDataUrl) throw new Error(data.error || "The preview could not be generated. Try again.");
     previews.push({
-      id: "p" + Date.now(),
+      id: data.previewId,
       treatmentIds: batch.map(t => t.id),
       labels: batch.map(t => t.label),
-      intensity,
-      url
+      intensity: "medium",
+      url: data.resultDataUrl
     });
     enterMultiMode();
     showPreview(previews[previews.length - 1].id, true);
@@ -404,7 +398,7 @@ els.download.addEventListener("click", async () => {
     const blob = await (await fetch(current.url)).blob();
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "lumiere-preview-" + name + ".jpg";
+    a.download = "hebelie-preview-" + name + ".jpg";
     a.click();
     URL.revokeObjectURL(a.href);
   } catch (e) {
@@ -413,13 +407,12 @@ els.download.addEventListener("click", async () => {
 });
 
 /* 10 · Lead form ----------------------------------------------------------- */
-/* Nothing is sent yet — the backend is configured later. Submit only confirms. */
 function showInfoSent() {
   els.leadForm.hidden = true;
   els.infoSent.hidden = false;
 }
 
-els.leadForm.addEventListener("submit", e => {
+els.leadForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const data = new FormData(els.leadForm);
   const name = String(data.get("name") || "").trim();
@@ -433,10 +426,39 @@ els.leadForm.addEventListener("submit", e => {
       : "Please complete the form.";
     return;
   }
+  if (!sessionId) {
+    els.leadError.hidden = false;
+    els.leadError.textContent = "Generate a preview first.";
+    return;
+  }
   els.leadError.hidden = true;
-  leadSent = true;
-  showInfoSent();
-  persistCache();
+  const submit = els.leadForm.querySelector("button[type=submit]");
+  submit.disabled = true;
+  try {
+    const res = await fetch(HEBELIE_API + "/leads", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sessionId,
+        name,
+        phone,
+        email,
+        city,
+        consent: true,
+        sourceUrl: location.href
+      })
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error || "Could not send your details.");
+    leadSent = true;
+    showInfoSent();
+    persistCache();
+  } catch (err) {
+    els.leadError.hidden = false;
+    els.leadError.textContent = err.message;
+  } finally {
+    submit.disabled = false;
+  }
 });
 
 restoreCache();

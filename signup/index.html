@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Create an account — Hebelie</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Outfit:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body class="desk">
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="/"><span class="monogram" aria-hidden="true">H</span><span class="brand-text"><em>Hebelie</em><span class="brand-slogan">Studio desk</span></span></a>
+    </div>
+  </header>
+  <main class="desk-main">
+    <form id="signupForm" class="desk-login">
+      <p class="kicker">Studio desk</p>
+      <h1>Create an account</h1>
+      <label class="field">Clinic name
+        <input name="clinicName" type="text" autocomplete="organization" required>
+      </label>
+      <label class="field">Email
+        <input name="email" type="email" autocomplete="username" required>
+      </label>
+      <label class="field">Password
+        <input name="password" type="password" autocomplete="new-password" minlength="8" required>
+      </label>
+      <p id="signupError" class="lead-error" hidden></p>
+      <button class="btn-generate" type="submit">Create account</button>
+    </form>
+    <div id="signupOk" class="desk-login desk-success" hidden>
+      <p class="kicker">Studio desk</p>
+      <h1>Account ready</h1>
+      <p id="signupOkText" class="lede"></p>
+      <p class="auth-switch"><a href="/login/">Sign in</a> to open the desk.</p>
+    </div>
+  </main>
+<script src="/signup/signup.js"></script>
+</body>
+</html>
