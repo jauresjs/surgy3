@@ -46,4 +46,7 @@
 .desk-photos img { width: 100%; aspect-ratio: 3/4; object-fit: cover; border-radius: 14px; background: var(--bg-deep); }
 .desk-photos figcaption { margin-top: 0.35rem; color: var(--muted); font-size: 0.78rem; }
 .desk-empty { color: var(--muted); }
+.auth-switch { margin: 1rem 0 0; color: var(--muted); font-size: 0.92rem; }
+.auth-switch a { color: var(--ink); }
+.desk-success .lede { margin: 0; }
 #signOut { padding: 0.45rem 0.8rem; }
