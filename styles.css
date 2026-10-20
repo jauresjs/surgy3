@@ -338,6 +338,7 @@ a { color: inherit; }
 }
 
 .studio-aside {
+  display: none;
   padding: 0.4rem 0.2rem 0;
 }
 
@@ -1032,7 +1033,10 @@ a { color: inherit; }
   line-height: 1.5;
 }
 
-#studio, #method, #about, #journal, #faq { scroll-margin-top: 84px; }
+#studio, #treatmentCard, #method, #about, #journal, #faq { scroll-margin-top: 84px; }
+
+#faq { display: none; }
+.site-footer a.desktop-only { display: none; }
 
 @media (min-width: 760px) {
   .method-grid, .post-grid { grid-template-columns: 1fr 1fr; }
@@ -1044,7 +1048,10 @@ a { color: inherit; }
 
 @media (min-width: 980px) {
   .hero-grid, .studio-grid { grid-template-columns: 1.05fr 0.95fr; }
+  .studio-aside { display: block; }
   .studio-grid .tool { margin: 0; max-width: none; }
+  #faq { display: block; }
+  .site-footer a.desktop-only { display: block; }
   .band { margin: 0 auto 4rem; max-width: calc(var(--max) - 2.5rem); padding: 3rem 2rem; }
 }
 

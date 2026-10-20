@@ -86,7 +86,7 @@
 </script>
 </head>
 <body>
-<a class="skip" href="#studio">Skip to the preview studio</a>
+<a class="skip" href="#treatmentCard">Skip to the preview studio</a>
 <div class="bg-wash" aria-hidden="true"></div>
 <div class="grain" aria-hidden="true"></div>
 
@@ -99,7 +99,7 @@
       <a href="#method">How it works</a>
       <a href="#about">About</a>
       <a href="#journal">Journal</a>
-      <a class="nav-cta" href="#studio">Start preview</a>
+      <a class="nav-cta" href="#treatmentCard">Start preview</a>
     </nav>
   </div>
 </header>
@@ -122,7 +122,7 @@
       <div class="hero-copy">
         <p class="lede">Preview aesthetic clinic treatments on your own face. Free, private, and no appointment needed.</p>
         <div class="hero-actions">
-          <a class="btn-primary" href="#studio">Start a preview</a>
+          <a class="btn-primary" href="#treatmentCard">Start a preview</a>
           <a class="btn-ghost" href="#method">See how it works</a>
         </div>
       </div>
@@ -136,30 +136,16 @@
         <h2>A private first look, then a way to follow up.</h2>
         <p class="lede">The preview stays on this page. If you generate again, earlier results stay in a strip under the image so you can open them.</p>
         <ol class="studio-steps">
-          <li><b>1</b><p><strong>One clear portrait.</strong> Front-facing, in even light, with your usual expression.</p></li>
-          <li><b>2</b><p><strong>One treatment.</strong> Choose light or medium and generate a single change.</p></li>
+          <li><b>1</b><p><strong>One treatment.</strong> Choose light or medium and generate a single change.</p></li>
+          <li><b>2</b><p><strong>One clear portrait.</strong> Front-facing, in even light, with your usual expression.</p></li>
           <li><b>3</b><p><strong>Then a combination.</strong> Generate again with one, two, or three treatments together.</p></li>
           <li><b>4</b><p><strong>A next step, if you want one.</strong> Leave a name, a phone or email, and your city.</p></li>
         </ol>
       </aside>
 
       <div class="tool">
-        <section class="card">
-          <p class="step-label"><span>Step 01</span>Your photo</p>
-          <div class="photo-actions">
-            <label class="photo-btn">Take a photo
-              <input type="file" id="cameraInput" accept="image/*" capture="user">
-            </label>
-            <label class="photo-btn">Upload a portrait
-              <input type="file" id="uploadInput" accept="image/*">
-            </label>
-          </div>
-          <p class="photo-note">A clear, front-facing photo works best. It is resized on your device.</p>
-          <img id="preview" class="photo-preview" alt="Your uploaded portrait">
-        </section>
-
         <section class="card" id="treatmentCard">
-          <p class="step-label"><span>Step 02</span><span id="treatmentTitle">Choose treatment</span></p>
+          <p class="step-label"><span>Step 01</span><span id="treatmentTitle">Choose treatment</span></p>
           <div class="treatments" id="treatments"></div>
           <p id="multiHint" class="multi-hint" hidden>You can generate a new preview with up to 3 treatments at once.</p>
           <p id="selectionCount" class="selection-count" hidden></p>
@@ -170,6 +156,20 @@
               <button type="button" class="intensity-btn selected" data-level="medium" aria-pressed="true">Medium</button>
             </div>
           </div>
+        </section>
+
+        <section class="card">
+          <p class="step-label"><span>Step 02</span>Your photo</p>
+          <div class="photo-actions">
+            <label class="photo-btn">Take a photo
+              <input type="file" id="cameraInput" accept="image/*" capture="user">
+            </label>
+            <label class="photo-btn">Upload a portrait
+              <input type="file" id="uploadInput" accept="image/*">
+            </label>
+          </div>
+          <p class="photo-note">A clear, front-facing photo works best. It is resized on your device.</p>
+          <img id="preview" class="photo-preview" alt="Your uploaded portrait">
         </section>
 
         <button id="generateBtn" class="btn-generate" disabled>Generate preview</button>
@@ -233,13 +233,13 @@
       <div class="method-grid">
         <article class="method-card">
           <span>01</span>
-          <h3>Bring a portrait</h3>
-          <p>Use the camera or a photo you already have. Even light and a straight-on angle keep the comparison honest.</p>
+          <h3>Name the change</h3>
+          <p>Pick a treatment and an intensity. The first generation shows that one change, so you can read it on its own.</p>
         </article>
         <article class="method-card">
           <span>02</span>
-          <h3>Name the change</h3>
-          <p>Pick a treatment and an intensity. The first generation shows that one change, so you can read it on its own.</p>
+          <h3>Bring a portrait</h3>
+          <p>Use the camera or a photo you already have. Even light and a straight-on angle keep the comparison honest.</p>
         </article>
         <article class="method-card">
           <span>03</span>
@@ -329,7 +329,7 @@
   <section class="band">
     <h2>Start with one treatment.</h2>
     <p>You can combine others on the next generation. The portrait never requires an account.</p>
-    <a class="btn-primary" href="#studio">Open the studio</a>
+    <a class="btn-primary" href="#treatmentCard">Open the studio</a>
   </section>
 </main>
 
@@ -341,10 +341,10 @@
     </div>
     <div>
       <h2>Studio</h2>
-      <a href="#studio">Start a preview</a>
+      <a href="#treatmentCard">Start a preview</a>
       <a href="#method">How it works</a>
       <a href="#about">About</a>
-      <a href="#faq">Questions</a>
+      <a class="desktop-only" href="#faq">Questions</a>
     </div>
     <div>
       <h2>Journal</h2>
