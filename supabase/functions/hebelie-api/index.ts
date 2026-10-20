@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
-import { HttpError, login, me, signup } from "./auth.ts";
-import { TREATMENTS, buildRequest } from "./prompts.ts";
+import { HttpError, createClinicAccount, login, logout, me, requireStaff, signup } from "./auth.ts";
+import { buildRequest, labelsFor, loadPromptCatalog, normalizeTreatmentIds } from "./prompts.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -41,65 +41,6 @@ async function hebelieId(supabase: SupabaseClient) {
   return data.id as string;
 }
 
-function safeEqual(a: string, b: string) {
-  const aa = new TextEncoder().encode(a);
-  const bb = new TextEncoder().encode(b);
-  const len = Math.max(aa.length, bb.length);
-  let out = aa.length === bb.length ? 0 : 1;
-  for (let i = 0; i < len; i++) out |= (aa[i] || 0) ^ (bb[i] || 0);
-  return out === 0;
-}
-
-function b64url(bytes: Uint8Array) {
-  let s = "";
-  for (const b of bytes) s += String.fromCharCode(b);
-  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
-}
-
-function b64urlDecode(s: string) {
-  const pad = s.length % 4 === 0 ? "" : "=".repeat(4 - (s.length % 4));
-  const bin = atob(s.replace(/-/g, "+").replace(/_/g, "/") + pad);
-  return Uint8Array.from(bin, (c) => c.charCodeAt(0));
-}
-
-async function hmacKey(secret: string) {
-  return crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign", "verify"],
-  );
-}
-
-async function signToken(secret: string) {
-  const payload = b64url(new TextEncoder().encode(JSON.stringify({ exp: Date.now() + 7 * 24 * 3600 * 1000 })));
-  const sig = new Uint8Array(await crypto.subtle.sign("HMAC", await hmacKey(secret), new TextEncoder().encode(payload)));
-  return `${payload}.${b64url(sig)}`;
-}
-
-async function tokenOk(token: string, secret: string) {
-  const [payload, sig] = token.split(".");
-  if (!payload || !sig) return false;
-  const valid = await crypto.subtle.verify(
-    "HMAC",
-    await hmacKey(secret),
-    b64urlDecode(sig),
-    new TextEncoder().encode(payload),
-  );
-  if (!valid) return false;
-  try {
-    const body = JSON.parse(new TextDecoder().decode(b64urlDecode(payload)));
-    return typeof body.exp === "number" && body.exp > Date.now();
-  } catch {
-    return false;
-  }
-}
-
-function labelsFor(ids: string[]) {
-  return ids.map((id) => TREATMENTS.find((t) => t.id === id)?.label || id);
-}
-
 function decodePhoto(imageDataUrl: string) {
   const match = /^data:image\/jpeg;base64,([A-Za-z0-9+/=\s]+)$/.exec(imageDataUrl || "");
   if (!match) throw new Error("Use a JPEG portrait");
@@ -109,16 +50,6 @@ function decodePhoto(imageDataUrl: string) {
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
   return bytes;
-}
-
-function normalizeIds(ids: unknown) {
-  if (!Array.isArray(ids) || ids.length < 1 || ids.length > 3) throw new Error("Choose 1 to 3 treatments");
-  const clean = ids.map((id) => String(id));
-  if (new Set(clean).size !== clean.length) throw new Error("Choose each treatment once");
-  for (const id of clean) {
-    if (!TREATMENTS.some((t) => t.id === id)) throw new Error("Unknown treatment");
-  }
-  return clean;
 }
 
 function routePath(req: Request) {
@@ -149,7 +80,8 @@ Deno.serve(async (req) => {
     if (req.method === "POST" && path === "/auth/signup") return await signup(supabase, await readJson(req), cors);
     if (req.method === "POST" && path === "/auth/login") return await login(supabase, await readJson(req), cors);
     if (req.method === "GET" && path === "/auth/me") return await me(supabase, req, cors);
-    if (req.method === "POST" && path === "/admin/login") return await adminLogin(req, supabase);
+    if (req.method === "POST" && path === "/auth/logout") return await logout(supabase, req, cors);
+    if (req.method === "POST" && path === "/accounts") return await createClinicAccount(supabase, req, await readJson(req), cors);
     if (req.method === "GET" && path === "/admin/leads") return await adminLeads(req, supabase);
     if (req.method === "GET" && path === "/admin/media") return await adminMedia(req, supabase);
     return json(404, { error: "Not found" });
@@ -164,7 +96,8 @@ Deno.serve(async (req) => {
 
 async function generate(req: Request, supabase: SupabaseClient) {
   const body = await readJson(req);
-  const treatmentIds = normalizeIds(body.treatmentIds);
+  const catalog = await loadPromptCatalog(supabase);
+  const treatmentIds = normalizeTreatmentIds(catalog, body.treatmentIds);
   const photoBytes = decodePhoto(body.imageDataUrl);
   const accountId = await hebelieId(supabase);
 
@@ -209,7 +142,7 @@ async function generate(req: Request, supabase: SupabaseClient) {
   const falRes = await fetch("https://fal.run/fal-ai/nano-banana/edit", {
     method: "POST",
     headers: { Authorization: `Key ${falKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify(buildRequest(treatmentIds, "medium", body.imageDataUrl, 1)),
+    body: JSON.stringify(buildRequest(catalog, treatmentIds, "medium", body.imageDataUrl, 1)),
   });
   if (!falRes.ok) {
     await supabase.from("generations").insert({
@@ -313,32 +246,17 @@ async function saveLead(req: Request, supabase: SupabaseClient) {
   return json(200, { ok: true });
 }
 
-async function requireAdmin(req: Request, supabase: SupabaseClient) {
-  const token = req.headers.get("x-admin-token") || "";
-  const secret = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-  if (!secret || !(await tokenOk(token, secret))) return json(401, { error: "Sign in again" });
-  return null;
-}
-
-async function adminLogin(req: Request, supabase: SupabaseClient) {
-  const body = await readJson(req);
-  const expected = (await settings(supabase)).admin_password || "";
-  const password = String(body.password || "");
-  if (!expected || !safeEqual(password, expected)) return json(401, { error: "Wrong password" });
-  const secret = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-  return json(200, { token: await signToken(secret) });
-}
-
 async function adminLeads(req: Request, supabase: SupabaseClient) {
-  const denied = await requireAdmin(req, supabase);
-  if (denied) return denied;
-  const accountId = await hebelieId(supabase);
-  const { data: leads, error } = await supabase
+  const actor = await requireStaff(supabase, req, cors);
+  if (actor instanceof Response) return actor;
+  const catalog = await loadPromptCatalog(supabase);
+  let query = supabase
     .from("leads")
-    .select("id, name, phone, email, city, consent_at, treatment_ids, channel, created_at, session_id, source_url")
-    .eq("account_id", accountId)
+    .select("id, name, phone, email, city, consent_at, treatment_ids, channel, created_at, session_id, source_url, account_id, accounts(name)")
     .order("created_at", { ascending: false })
     .limit(100);
+  if (!actor.platform) query = query.eq("account_id", actor.account.id);
+  const { data: leads, error } = await query;
   if (error) throw error;
   const sessionIds = [...new Set((leads || []).map((lead) => lead.session_id).filter(Boolean))];
   let sessions: { id: string; photo_path: string | null }[] = [];
@@ -358,6 +276,7 @@ async function adminLeads(req: Request, supabase: SupabaseClient) {
   return json(200, {
     leads: (leads || []).map((lead) => {
       const session = sessions.find((item) => item.id === lead.session_id);
+      const accountRecord = Array.isArray(lead.accounts) ? lead.accounts[0] : lead.accounts;
       return {
         id: lead.id,
         name: lead.name,
@@ -368,13 +287,14 @@ async function adminLeads(req: Request, supabase: SupabaseClient) {
         consentAt: lead.consent_at,
         createdAt: lead.created_at,
         sourceUrl: lead.source_url,
-        treatments: labelsFor(lead.treatment_ids || []),
+        accountName: accountRecord?.name || "",
+        treatments: labelsFor(catalog, lead.treatment_ids || []),
         photoPath: session?.photo_path || null,
         previews: previews
           .filter((preview) => preview.session_id === lead.session_id)
           .map((preview) => ({
             id: preview.id,
-            treatments: labelsFor(preview.treatment_ids || []),
+            treatments: labelsFor(catalog, preview.treatment_ids || []),
             resultPath: preview.result_path,
             createdAt: preview.created_at,
           })),
@@ -384,12 +304,12 @@ async function adminLeads(req: Request, supabase: SupabaseClient) {
 }
 
 async function adminMedia(req: Request, supabase: SupabaseClient) {
-  const denied = await requireAdmin(req, supabase);
-  if (denied) return denied;
-  const accountId = await hebelieId(supabase);
+  const actor = await requireStaff(supabase, req, cors);
+  if (actor instanceof Response) return actor;
   const path = new URL(req.url).searchParams.get("path") || "";
   const match = /^([0-9a-f-]{36})\/([0-9a-f-]{36})\/(photo|[0-9a-f-]{36})\.jpg$/i.exec(path);
-  if (!match || match[1] !== accountId) return json(404, { error: "Image not found" });
+  if (!match || (!actor.platform && match[1] !== actor.account.id)) return json(404, { error: "Image not found" });
+  const accountId = match[1];
   const { data: session } = await supabase
     .from("preview_sessions")
     .select("id")

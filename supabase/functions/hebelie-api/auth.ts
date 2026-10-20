@@ -11,7 +11,7 @@ export class HttpError extends Error {
   }
 }
 
-function json(status: number, body: unknown, cors: Record<string, string>) {
+function authJson(status: number, body: unknown, cors: Record<string, string>) {
   return new Response(JSON.stringify(body), {
     status,
     headers: { ...cors, "Content-Type": "application/json", "Cache-Control": "no-store" },
@@ -96,6 +96,13 @@ async function openSession(supabase: SupabaseClient, staffId: string) {
 
 type Account = { id: string; name: string; slug: string; status: string };
 
+export type Actor = {
+  staffId: string;
+  email: string;
+  platform: boolean;
+  account: Account;
+};
+
 function profile(email: string, account: Account, token?: string) {
   return {
     token,
@@ -110,9 +117,11 @@ async function createClinic(
   clinicName: string,
   email: string,
   password: string,
+  allowPlatformEmail: boolean,
 ) {
   const name = clinicName.trim().replace(/\s+/g, " ");
   if (name.length < 2 || name.length > 80) throw new HttpError(400, "Enter the clinic name");
+  if (!allowPlatformEmail && email === PLATFORM_ADMIN_EMAIL) throw new HttpError(400, "That email is reserved");
   const since = new Date(Date.now() - 3600_000).toISOString();
   const { count } = await supabase.from("accounts").select("id", { count: "exact", head: true }).gte("created_at", since);
   if ((count || 0) >= 30) throw new HttpError(429, "Too many new clinics. Try again in a little while.");
@@ -159,9 +168,9 @@ export async function signup(
 ) {
   const email = normalizeEmail(body.email);
   const password = normalizePassword(body.password);
-  const created = await createClinic(supabase, String(body.clinicName || ""), email, password);
+  const created = await createClinic(supabase, String(body.clinicName || ""), email, password, true);
   const token = await openSession(supabase, created.staffId);
-  return json(200, profile(email, created.account, token), cors);
+  return authJson(200, profile(email, created.account, token), cors);
 }
 
 export async function login(
@@ -178,19 +187,55 @@ export async function login(
     .maybeSingle();
   if (!staff?.password_hash) {
     await hashPassword(password || "missing");
-    return json(401, { error: "Email or password is wrong" }, cors);
+    return authJson(401, { error: "Email or password is wrong" }, cors);
   }
   if (!(await passwordMatches(password, staff.password_hash))) {
-    return json(401, { error: "Email or password is wrong" }, cors);
+    return authJson(401, { error: "Email or password is wrong" }, cors);
   }
   const { data: account } = await supabase
     .from("accounts")
     .select("id, name, slug, status")
     .eq("id", staff.account_id)
     .maybeSingle();
-  if (!account || account.status === "canceled") return json(401, { error: "Email or password is wrong" }, cors);
+  if (!account || account.status === "canceled") return authJson(401, { error: "Email or password is wrong" }, cors);
   const token = await openSession(supabase, staff.id);
-  return json(200, profile(email, account as Account, token), cors);
+  return authJson(200, profile(email, account as Account, token), cors);
+}
+
+export async function requireStaff(
+  supabase: SupabaseClient,
+  req: Request,
+  cors: Record<string, string>,
+): Promise<Actor | Response> {
+  const token = req.headers.get("x-admin-token") || "";
+  if (!token) return authJson(401, { error: "Sign in again" }, cors);
+  const { data: session } = await supabase
+    .from("staff_sessions")
+    .select("id, expires_at, staff_user_id")
+    .eq("token_hash", await sha256Hex(token))
+    .maybeSingle();
+  if (!session || new Date(session.expires_at).getTime() <= Date.now()) {
+    return authJson(401, { error: "Sign in again" }, cors);
+  }
+  const { data: staff } = await supabase
+    .from("staff_users")
+    .select("id, email, account_id")
+    .eq("id", session.staff_user_id)
+    .maybeSingle();
+  if (!staff) return authJson(401, { error: "Sign in again" }, cors);
+  const { data: account } = await supabase
+    .from("accounts")
+    .select("id, name, slug, status")
+    .eq("id", staff.account_id)
+    .maybeSingle();
+  if (!account) return authJson(401, { error: "Sign in again" }, cors);
+  const email = String(staff.email || "").toLowerCase();
+  return {
+    staffId: staff.id,
+    email,
+    platform: email === PLATFORM_ADMIN_EMAIL,
+    account: account as Account,
+  };
 }
 
 export async function me(
@@ -198,28 +243,32 @@ export async function me(
   req: Request,
   cors: Record<string, string>,
 ) {
+  const actor = await requireStaff(supabase, req, cors);
+  if (actor instanceof Response) return actor;
+  return authJson(200, profile(actor.email, actor.account), cors);
+}
+
+export async function logout(
+  supabase: SupabaseClient,
+  req: Request,
+  cors: Record<string, string>,
+) {
   const token = req.headers.get("x-admin-token") || "";
-  if (!token) return json(401, { error: "Sign in again" }, cors);
-  const { data: session } = await supabase
-    .from("staff_sessions")
-    .select("id, expires_at, staff_user_id")
-    .eq("token_hash", await sha256Hex(token))
-    .maybeSingle();
-  if (!session || new Date(session.expires_at).getTime() <= Date.now()) {
-    return json(401, { error: "Sign in again" }, cors);
-  }
-  const { data: staff } = await supabase
-    .from("staff_users")
-    .select("id, email, account_id")
-    .eq("id", session.staff_user_id)
-    .maybeSingle();
-  if (!staff) return json(401, { error: "Sign in again" }, cors);
-  const { data: account } = await supabase
-    .from("accounts")
-    .select("id, name, slug, status")
-    .eq("id", staff.account_id)
-    .maybeSingle();
-  if (!account) return json(401, { error: "Sign in again" }, cors);
-  const email = String(staff.email || "").toLowerCase();
-  return json(200, profile(email, account as Account), cors);
+  if (token) await supabase.from("staff_sessions").delete().eq("token_hash", await sha256Hex(token));
+  return authJson(200, { ok: true }, cors);
+}
+
+export async function createClinicAccount(
+  supabase: SupabaseClient,
+  req: Request,
+  body: Record<string, unknown>,
+  cors: Record<string, string>,
+) {
+  const actor = await requireStaff(supabase, req, cors);
+  if (actor instanceof Response) return actor;
+  if (!actor.platform) return authJson(403, { error: "Only the Hebelie admin can create a clinic this way" }, cors);
+  const email = normalizeEmail(body.email);
+  const password = normalizePassword(body.password);
+  const created = await createClinic(supabase, String(body.clinicName || ""), email, password, false);
+  return authJson(200, { ok: true, clinicName: created.account.name, email }, cors);
 }

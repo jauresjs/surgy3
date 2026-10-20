@@ -31,7 +31,7 @@ async function refreshSession() {
     sessionStorage.removeItem(TOKEN_KEY);
     return;
   }
-  showSignedIn(profile);
+  location.replace("/admin/");
 }
 
 signOutLocal.addEventListener("click", () => {
@@ -60,7 +60,7 @@ form.addEventListener("submit", async (event) => {
     const payload = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(payload.error || "Could not sign in");
     sessionStorage.setItem(TOKEN_KEY, payload.token);
-    showSignedIn(payload);
+    location.href = "/admin/";
   } catch (err) {
     showError(err.message);
   } finally {

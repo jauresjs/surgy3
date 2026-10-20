@@ -15,19 +15,13 @@
   <header class="topbar">
     <div class="topbar-inner">
       <a class="brand" href="/"><span class="monogram" aria-hidden="true">H</span><span class="brand-text"><em>Hebelie</em><span class="brand-slogan">Studio desk</span></span></a>
-      <button type="button" id="signOut" class="btn-ghost" hidden>Sign out</button>
+      <div class="desk-user">
+        <p id="who" hidden></p>
+        <button type="button" id="signOut" class="btn-ghost" hidden>Sign out</button>
+      </div>
     </div>
   </header>
   <main class="desk-main">
-    <form id="loginForm" class="desk-login">
-      <p class="kicker">Studio desk</p>
-      <h1>Leads</h1>
-      <label class="field">Password
-        <input id="password" type="password" autocomplete="current-password" required>
-      </label>
-      <p id="loginError" class="lead-error" hidden></p>
-      <button class="btn-generate" type="submit">Open the desk</button>
-    </form>
     <section id="board" hidden>
       <div class="desk-head">
         <div>
@@ -36,6 +30,24 @@
         </div>
         <p id="leadCount" class="lede"></p>
       </div>
+      <form id="createClinic" class="desk-card desk-create" hidden>
+        <h2>New clinic</h2>
+        <p class="desk-meta">Create an account for a medspa. They sign in with this email and password.</p>
+        <div class="desk-create-fields">
+          <label class="field">Clinic name
+            <input name="clinicName" type="text" autocomplete="organization" required>
+          </label>
+          <label class="field">Owner email
+            <input name="email" type="email" autocomplete="off" required>
+          </label>
+          <label class="field">Password
+            <input name="password" type="password" autocomplete="new-password" minlength="8" required>
+          </label>
+        </div>
+        <p id="createError" class="lead-error" hidden></p>
+        <p id="createOk" class="desk-ok" hidden></p>
+        <button class="btn-generate" type="submit">Create clinic</button>
+      </form>
       <p id="boardError" class="lead-error" hidden></p>
       <div id="leadList" class="desk-list"></div>
     </section>

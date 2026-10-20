@@ -3,13 +3,17 @@
 const API = "https://qqrcxbmbulfsvgbqjngz.supabase.co/functions/v1/hebelie-api";
 const TOKEN_KEY = "hebelie-desk-token";
 
-const loginForm = document.getElementById("loginForm");
-const loginError = document.getElementById("loginError");
 const board = document.getElementById("board");
 const boardError = document.getElementById("boardError");
 const leadList = document.getElementById("leadList");
 const leadCount = document.getElementById("leadCount");
 const signOut = document.getElementById("signOut");
+const who = document.getElementById("who");
+const createClinic = document.getElementById("createClinic");
+const createError = document.getElementById("createError");
+const createOk = document.getElementById("createOk");
+
+let platform = false;
 
 function token() {
   return sessionStorage.getItem(TOKEN_KEY) || "";
@@ -20,23 +24,21 @@ function showError(el, message) {
   el.textContent = message || "";
 }
 
+function goToLogin() {
+  sessionStorage.removeItem(TOKEN_KEY);
+  location.replace("/login/");
+}
+
 async function api(path, options = {}) {
   const headers = new Headers(options.headers || {});
   if (token()) headers.set("x-admin-token", token());
+  if (options.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
   const res = await fetch(API + path, { ...options, headers });
-  if (res.status === 401 && path !== "/admin/login") {
-    sessionStorage.removeItem(TOKEN_KEY);
-    showBoard(false);
-    showError(loginError, "Sign in again.");
+  if (res.status === 401) {
+    goToLogin();
     throw new Error("Sign in again");
   }
   return res;
-}
-
-function showBoard(on) {
-  loginForm.hidden = on;
-  board.hidden = !on;
-  signOut.hidden = !on;
 }
 
 async function imageUrl(path) {
@@ -67,10 +69,16 @@ async function renderLeads(leads) {
     const contact = [lead.phone, lead.email, lead.city].filter(Boolean).join(" · ");
     card.innerHTML = `
       <h2></h2>
+      <p class="desk-clinic" hidden></p>
       <p class="desk-meta"></p>
       <ul class="desk-tags"></ul>
       <div class="desk-photos"></div>`;
     card.querySelector("h2").textContent = lead.name;
+    if (platform && lead.accountName) {
+      const clinic = card.querySelector(".desk-clinic");
+      clinic.hidden = false;
+      clinic.textContent = lead.accountName;
+    }
     card.querySelector(".desk-meta").textContent = contact + " · " + when(lead.createdAt);
     const tags = card.querySelector(".desk-tags");
     (lead.treatments || []).forEach((name) => {
@@ -80,11 +88,10 @@ async function renderLeads(leads) {
     });
     const photos = card.querySelector(".desk-photos");
     const figures = [{ caption: "Uploaded", path: lead.photoPath }];
-    (lead.previews || []).forEach((preview, index) => {
+    (lead.previews || []).forEach((preview) => {
       figures.push({
         caption: "Generated · " + (preview.treatments || []).join(" + "),
         path: preview.resultPath,
-        note: index + 1,
       });
     });
     for (const figure of figures) {
@@ -112,32 +119,62 @@ async function loadLeads() {
   await renderLeads(data.leads || []);
 }
 
-loginForm.addEventListener("submit", async (event) => {
+createClinic.addEventListener("submit", async (event) => {
   event.preventDefault();
-  showError(loginError, "");
-  const password = document.getElementById("password").value;
-  const res = await fetch(API + "/admin/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ password }),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    showError(loginError, data.error || "Could not sign in");
+  showError(createError, "");
+  createOk.hidden = true;
+  const data = new FormData(createClinic);
+  const button = createClinic.querySelector("button[type=submit]");
+  button.disabled = true;
+  try {
+    const res = await api("/accounts", {
+      method: "POST",
+      body: JSON.stringify({
+        clinicName: String(data.get("clinicName") || ""),
+        email: String(data.get("email") || ""),
+        password: String(data.get("password") || ""),
+      }),
+    });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(payload.error || "Could not create the clinic");
+    createOk.hidden = false;
+    createOk.textContent = payload.clinicName + " can sign in as " + payload.email + ".";
+    createClinic.reset();
+  } catch (err) {
+    if (err.message !== "Sign in again") showError(createError, err.message);
+  } finally {
+    button.disabled = false;
+  }
+});
+
+signOut.addEventListener("click", async () => {
+  try {
+    await api("/auth/logout", { method: "POST" });
+  } catch (err) {
+    /* Session may already be gone. */
+  }
+  goToLogin();
+});
+
+async function boot() {
+  if (!token()) {
+    location.replace("/login/");
     return;
   }
-  sessionStorage.setItem(TOKEN_KEY, data.token);
-  showBoard(true);
+  const res = await api("/auth/me");
+  const profile = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    showError(boardError, profile.error || "Could not open the desk");
+    board.hidden = false;
+    return;
+  }
+  platform = !!profile.platform;
+  who.hidden = false;
+  who.textContent = profile.platform ? profile.email + " · Admin" : profile.email + " · " + profile.clinicName;
+  signOut.hidden = false;
+  createClinic.hidden = !profile.platform;
+  board.hidden = false;
   await loadLeads();
-});
-
-signOut.addEventListener("click", () => {
-  sessionStorage.removeItem(TOKEN_KEY);
-  leadList.replaceChildren();
-  showBoard(false);
-});
-
-if (token()) {
-  showBoard(true);
-  loadLeads().catch(() => {});
 }
+
+boot().catch(() => {});
