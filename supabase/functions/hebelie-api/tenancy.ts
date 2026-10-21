@@ -175,6 +175,42 @@ export function assertTreatmentsOffered(tenant: Tenant, treatmentIds: string[]) 
   }
 }
 
+// Say that the key was used, and from which page.
+//
+// Called only after assertOriginAllowed has accepted the request, so a page the
+// clinic has not claimed cannot move the desk's status line, and a refused call
+// is not counted as usage either.
+async function stampKeyUsage(supabase: SupabaseClient, req: Request, publicKeyId: string) {
+  const now = new Date().toISOString();
+  /* A page of our own — the desk's preview — says nothing about the clinic's
+     site, so it stamps usage but not an origin. That is the difference between
+     "used" and "live", and it is what lets the Install tab report the second
+     without counting its own preview. */
+  /* Only the header counts here. embedderOrigin falls back to this request's
+     own Origin, and a frame opened on its own (a pasted frame URL, a suppressed
+     referrer) reports our widget host that way — which is not a clinic site. */
+  const parentOrigin = normalizeOrigin(req.headers.get("x-parent-origin") || "");
+  const fromClinic = Boolean(parentOrigin) && !isFirstParty(req);
+  const stamp: Record<string, unknown> = { last_used_at: now };
+  if (fromClinic) {
+    stamp.last_parent_origin = parentOrigin;
+    stamp.last_parent_at = now;
+  }
+  const { error } = await supabase
+    .from("widget_keys")
+    .update(stamp)
+    .eq("id", publicKeyId);
+  /* A function deployed ahead of migration 20261021140000 has no new columns
+     to write. Retrying with the older shape keeps the one thing this line did
+     before — recording that the key was used — instead of losing both. */
+  if (error && fromClinic) {
+    await supabase
+      .from("widget_keys")
+      .update({ last_used_at: now })
+      .eq("id", publicKeyId);
+  }
+}
+
 export async function resolveTenant(
   supabase: SupabaseClient,
   req: Request,
@@ -205,34 +241,11 @@ export async function resolveTenant(
     if (!data || !record) throw new HttpError(401, "This widget key is not valid");
     account = record as Record<string, unknown>;
     publicKeyId = String(data.id);
-    const now = new Date().toISOString();
-    /* A page of our own — the desk's preview — says nothing about the clinic's
-       site, so it stamps usage but not an origin. That is the difference between
-       "used" and "live", and it is what lets the Install tab report the second
-       without counting its own preview. */
-    /* Only the header counts here. embedderOrigin falls back to this request's
-       own Origin, and a frame opened on its own (a pasted frame URL, a suppressed
-       referrer) reports our widget host that way — which is not a clinic site. */
-    const parentOrigin = normalizeOrigin(req.headers.get("x-parent-origin") || "");
-    const fromClinic = Boolean(parentOrigin) && !isFirstParty(req);
-    const stamp: Record<string, unknown> = { last_used_at: now };
-    if (fromClinic) {
-      stamp.last_parent_origin = parentOrigin;
-      stamp.last_parent_at = now;
-    }
-    const { error: stampError } = await supabase
-      .from("widget_keys")
-      .update(stamp)
-      .eq("id", publicKeyId);
-    /* A function deployed ahead of migration 20261021140000 has no new columns
-       to write. Retrying with the older shape keeps the one thing this line did
-       before — recording that the key was used — instead of losing both. */
-    if (stampError && fromClinic) {
-      await supabase
-        .from("widget_keys")
-        .update({ last_used_at: now })
-        .eq("id", publicKeyId);
-    }
+    /* Nothing is stamped yet. Usage is written by stampKeyUsage, and only once
+       assertOriginAllowed has let the request through: a page that is not the
+       clinic's own is refused a few lines below, and recording it here would let
+       a misplaced or stolen key report someone else's site as the one that is
+       live — which is the opposite of what these columns are for. */
   } else {
     const { data, error } = await supabase
       .from("accounts")
@@ -249,6 +262,7 @@ export async function resolveTenant(
   const tenant = await loadTenant(supabase, account!, publicKeyId);
   cache.set(cacheKey, { at: Date.now(), tenant });
   assertOriginAllowed(req, tenant);
+  if (publicKeyId) await stampKeyUsage(supabase, req, publicKeyId);
   return tenant;
 }
 
