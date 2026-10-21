@@ -1,14 +1,25 @@
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { HttpError, createClinicAccount, login, logout, me, requireStaff, signup } from "./auth.ts";
-import { buildRequest, labelsFor, loadPromptCatalog, normalizeTreatmentIds } from "./prompts.ts";
+import {
+  buildRequest,
+  labelsFor,
+  loadPromptCatalog,
+  normalizeTreatmentIds,
+  type Treatment,
+} from "./prompts.ts";
+import { assertTreatmentsOffered, resolveTenant } from "./tenancy.ts";
 
+// A custom header has to be named here or the browser fails the preflight and
+// the widget's calls never leave the frame.
 const cors = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-admin-token",
+  "Access-Control-Allow-Headers":
+    "authorization, apikey, content-type, x-admin-token, x-widget-key, x-parent-origin",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
 const CONSENT_TEXT = "You can contact me about this preview.";
+const CONSENT_VERSION = "2026-10-21";
 const HOUR_LIMIT = 40;
 
 let settingsCache: Record<string, string> | null = null;
@@ -33,12 +44,6 @@ async function settings(supabase: SupabaseClient) {
   if (error) throw error;
   settingsCache = Object.fromEntries((data || []).map((row) => [row.key, row.value]));
   return settingsCache;
-}
-
-async function hebelieId(supabase: SupabaseClient) {
-  const { data, error } = await supabase.from("accounts").select("id").eq("slug", "hebelie").single();
-  if (error || !data) throw new Error("Hebelie account is missing");
-  return data.id as string;
 }
 
 function decodePhoto(imageDataUrl: string) {
@@ -77,6 +82,7 @@ Deno.serve(async (req) => {
     const supabase = db();
     if (req.method === "POST" && path === "/generate") return await generate(req, supabase);
     if (req.method === "POST" && path === "/leads") return await saveLead(req, supabase);
+    if (req.method === "GET" && path === "/widget/config") return await widgetConfig(req, supabase);
     if (req.method === "POST" && path === "/auth/signup") return await signup(supabase, await readJson(req), cors);
     if (req.method === "POST" && path === "/auth/login") return await login(supabase, await readJson(req), cors);
     if (req.method === "GET" && path === "/auth/me") return await me(supabase, req, cors);
@@ -94,12 +100,58 @@ Deno.serve(async (req) => {
   }
 });
 
+// A logo lives in the private previews bucket, so it is exchanged for a
+// short-lived signed URL instead of being published. An absolute URL is used as
+// it is, which lets a tenant point at their own CDN.
+async function tenantLogo(supabase: SupabaseClient, path: string | null) {
+  if (!path) return null;
+  if (/^https?:\/\//i.test(path)) return path;
+  try {
+    const { data } = await supabase.storage.from("previews").createSignedUrl(path, 3600);
+    return data?.signedUrl || null;
+  } catch {
+    return null;
+  }
+}
+
+// Everything the widget needs before it draws: whose brand to wear, which
+// treatments this clinic actually sells, and the exact consent sentence the
+// server will record. The frame never hard-codes a treatment list, so turning
+// one off in the database removes it from a customer's site with no redeploy.
+async function widgetConfig(req: Request, supabase: SupabaseClient) {
+  const tenant = await resolveTenant(supabase, req);
+  const catalog = await loadPromptCatalog(supabase);
+  const offered = tenant.treatments.length ? tenant.treatments : catalog.treatments.map((t) => t.id);
+  const treatments = offered
+    .map((id) => catalog.treatments.find((t) => t.id === id))
+    .filter((t): t is Treatment => Boolean(t))
+    .map((t) => ({ id: t.id, label: t.label }));
+  return json(200, {
+    tenant: {
+      name: tenant.name,
+      slug: tenant.slug,
+      brand: {
+        primary: tenant.brand.primary,
+        accent: tenant.brand.accent,
+        tagline: tenant.brand.tagline,
+        bookingUrl: tenant.brand.bookingUrl,
+        logoUrl: await tenantLogo(supabase, tenant.brand.logoPath),
+      },
+    },
+    treatments,
+    consent: { text: CONSENT_TEXT, version: CONSENT_VERSION },
+    maxTreatments: 3,
+  });
+}
+
 async function generate(req: Request, supabase: SupabaseClient) {
   const body = await readJson(req);
+  const tenant = await resolveTenant(supabase, req, body);
   const catalog = await loadPromptCatalog(supabase);
   const treatmentIds = normalizeTreatmentIds(catalog, body.treatmentIds);
+  assertTreatmentsOffered(tenant, treatmentIds);
   const photoBytes = decodePhoto(body.imageDataUrl);
-  const accountId = await hebelieId(supabase);
+  const accountId = tenant.id;
 
   const since = new Date(Date.now() - 3600_000).toISOString();
   const { count } = await supabase
@@ -213,7 +265,8 @@ async function saveLead(req: Request, supabase: SupabaseClient) {
   if (!name || !city || (!phone && !email) || body.consent !== true) {
     throw new Error(!phone && !email ? "Add a phone number or an email" : "Please complete the form");
   }
-  const accountId = await hebelieId(supabase);
+  const tenant = await resolveTenant(supabase, req, body);
+  const accountId = tenant.id;
   const { data: session } = await supabase
     .from("preview_sessions")
     .select("id")
@@ -232,13 +285,15 @@ async function saveLead(req: Request, supabase: SupabaseClient) {
   const { error } = await supabase.from("leads").insert({
     account_id: accountId,
     session_id: sessionId,
-    channel: "site",
+    public_key_id: tenant.publicKeyId,
+    channel: tenant.publicKeyId ? "widget" : "site",
     name,
     phone: phone || null,
     email: email || null,
     city,
     consent_at: new Date().toISOString(),
     consent_text: CONSENT_TEXT,
+    consent_version: CONSENT_VERSION,
     treatment_ids: latest.treatment_ids,
     source_url: typeof body.sourceUrl === "string" ? body.sourceUrl.slice(0, 500) : null,
   });

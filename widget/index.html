@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<meta name="color-scheme" content="light">
+<title>Treatment preview</title>
+<link rel="stylesheet" href="widget.css">
+</head>
+<body>
+<div class="h-app" id="app" aria-busy="true">
+
+  <header class="h-head" id="brandHead">
+    <img id="brandLogo" class="h-logo" alt="" hidden>
+    <div>
+      <p class="h-eyebrow" id="brandName">Treatment preview</p>
+      <p class="h-tagline" id="brandTagline" hidden></p>
+    </div>
+  </header>
+
+  <p class="h-note" id="loading" role="status">Loading your preview studio…</p>
+
+  <div class="h-fatal" id="fatal" role="alert" hidden>
+    <p id="fatalText">This preview is unavailable right now.</p>
+    <button type="button" class="h-btn h-btn-ghost" id="retryBtn">Try again</button>
+  </div>
+
+  <main class="h-studio" id="studio" hidden>
+
+    <section class="h-card">
+      <div class="h-card-head">
+        <p class="h-step"><span>Step 01</span><span id="treatmentTitle">Choose treatment</span></p>
+        <button type="button" class="h-next" id="treatmentNext" hidden>Next</button>
+      </div>
+      <div class="h-treatments" id="treatments" role="group" aria-label="Treatments"></div>
+      <p class="h-hint" id="multiHint" hidden>You can generate a new preview with up to 3 treatments at once.</p>
+      <p class="h-count" id="selectionCount" hidden></p>
+    </section>
+
+    <section class="h-card">
+      <p class="h-step"><span>Step 02</span>Your photo</p>
+      <div class="h-photo-actions">
+        <label class="h-photo-btn">Take a photo
+          <input type="file" id="cameraInput" accept="image/*" capture="user">
+        </label>
+        <label class="h-photo-btn">Upload a portrait
+          <input type="file" id="uploadInput" accept="image/*">
+        </label>
+      </div>
+      <p class="h-photo-note">A clear, front-facing photo works best. It is resized on your device.</p>
+      <img class="h-photo-preview" id="preview" alt="Your uploaded portrait">
+    </section>
+
+    <button type="button" class="h-btn" id="generateBtn" disabled>Generate preview</button>
+    <p class="h-status" id="status" role="status"></p>
+
+    <section class="h-card" id="resultWrap" hidden>
+      <p class="h-step"><span>Result</span>Your preview</p>
+      <div class="h-frame" id="sliderWrap">
+        <img id="beforeImg" alt="Before">
+        <img id="afterImg" class="h-after" alt="After">
+        <div class="h-divider" aria-hidden="true"></div>
+        <button type="button" class="h-handle" id="sliderHandle" aria-label="Slide to compare before and after" aria-valuemin="0" aria-valuemax="100" aria-valuenow="48" role="slider">
+          <svg width="7" height="10" viewBox="0 0 7 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 1 1.5 5 6 9"/></svg>
+          <svg width="7" height="10" viewBox="0 0 7 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m1 1 4.5 4L1 9"/></svg>
+        </button>
+        <span class="h-badge left" id="beforeBadge">Before</span>
+        <span class="h-badge right" id="afterBadge">After</span>
+      </div>
+      <button type="button" class="h-btn h-save" id="downloadBtn">Save result</button>
+      <div class="h-cache" id="previewCache" hidden>
+        <p class="h-cache-label">Your previews</p>
+        <div class="h-cache-list" id="cacheList" role="list"></div>
+      </div>
+      <button type="button" class="h-btn h-again" id="againBtn">Generate again</button>
+    </section>
+
+    <section class="h-card" id="leadWrap" hidden>
+      <p class="h-step"><span>Next</span>Keep this look</p>
+      <p class="h-lead-copy" id="leadCopy">Share your details and the studio will follow up about what you previewed.</p>
+      <form class="h-form" id="leadForm" novalidate>
+        <label class="h-field">Name
+          <input name="name" type="text" autocomplete="name" required>
+        </label>
+        <label class="h-field">Phone
+          <input name="phone" type="tel" autocomplete="tel" inputmode="tel">
+        </label>
+        <label class="h-field">Email
+          <input name="email" type="email" autocomplete="email">
+        </label>
+        <label class="h-field">City or ZIP
+          <input name="city" type="text" autocomplete="address-level2" required>
+        </label>
+        <label class="h-consent">
+          <input name="consent" type="checkbox" required>
+          <span id="consentText">You can contact me about this preview.</span>
+        </label>
+        <p class="h-lead-error" id="leadError" hidden></p>
+        <button type="submit" class="h-btn">Send my details</button>
+      </form>
+      <div class="h-sent" id="infoSent" role="status" hidden>
+        <p>Thank you — the studio has your details.</p>
+        <a class="h-btn" id="bookingLink" href="#" target="_blank" rel="noopener" hidden>Book a consultation</a>
+        <button type="button" class="h-btn h-btn-ghost" id="closeBtn">Done</button>
+      </div>
+    </section>
+
+    <p class="h-legal">AI simulation for illustration only. Actual results vary. A licensed professional must examine you before any treatment.</p>
+  </main>
+</div>
+<script src="widget.js"></script>
+</body>
+</html>

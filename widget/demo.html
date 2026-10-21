@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Widget demo — a host page that is not Hebelie</title>
+<style>
+  :root { --ink: #1c1a18; --muted: #6f665e; --line: #e6ded4; --bg: #f4f0ea; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 2rem 1rem 4rem;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: Georgia, "Times New Roman", serif;
+    line-height: 1.55;
+  }
+  .wrap { width: 100%; max-width: 720px; margin: 0 auto; }
+  .brand { font-size: 0.8rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); }
+  h1 { margin: 0.4rem 0 0.6rem; font-size: 2rem; line-height: 1.2; }
+  p { margin: 0 0 1rem; }
+  .slot { margin: 1.6rem 0; }
+  .card { padding: 1rem; border: 1px solid var(--line); border-radius: 18px; background: #fffdfa; }
+  form { display: grid; gap: 0.5rem; font-family: system-ui, Arial, sans-serif; font-size: 0.85rem; }
+  label { display: grid; gap: 0.25rem; color: var(--muted); font-weight: 600; }
+  input { padding: 0.55rem 0.65rem; border: 1px solid var(--line); border-radius: 10px; font: inherit; }
+  button { padding: 0.6rem 0.9rem; border: 0; border-radius: 999px; background: #1c1a18; color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+  #log { margin: 1rem 0 0; padding: 0.8rem; min-height: 3rem; border-radius: 12px; background: #1c1a18; color: #d8f3dc; font-family: ui-monospace, Consolas, monospace; font-size: 0.72rem; white-space: pre-wrap; }
+  .hint { font-family: system-ui, Arial, sans-serif; font-size: 0.78rem; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="brand">Demo host page</p>
+  <h1>This page is not Hebelie.</h1>
+  <p>It stands in for a clinic site: a different origin, its own fonts and colours, and one
+    <code>&lt;script&gt;</code> tag that loads the widget. Everything inside the studio belongs
+    to the tenant the key resolves to, not to this page.</p>
+
+  <section class="slot" id="widget-slot"></section>
+
+  <section class="card">
+    <form id="keyForm">
+      <label>Widget public key
+        <input id="keyInput" name="key" type="text" placeholder="pk_live_..." autocomplete="off" spellcheck="false">
+      </label>
+      <label>Mode
+        <select name="mode" style="padding:0.55rem 0.65rem;border:1px solid #e6ded4;border-radius:10px;font:inherit">
+          <option value="inline">inline</option>
+          <option value="floating">floating</option>
+        </select>
+      </label>
+      <button type="submit">Load widget</button>
+      <p class="hint">Reloads this page with <code>?key=…&amp;mode=…</code> so the iframe is created
+        exactly as a customer's page would create it.</p>
+    </form>
+    <pre id="log" aria-live="polite"></pre>
+  </section>
+</div>
+
+<script>
+  "use strict";
+
+  const params = new URLSearchParams(location.search);
+  const key = (params.get("key") || "").trim();
+  const mode = params.get("mode") === "floating" ? "floating" : "inline";
+  const logEl = document.getElementById("log");
+  const input = document.getElementById("keyInput");
+
+  function log(line) {
+    logEl.textContent = (logEl.textContent ? logEl.textContent + "\n" : "") + line;
+    if (logEl.textContent.length > 4000) logEl.textContent = logEl.textContent.slice(-4000);
+  }
+
+  if (key) {
+    input.value = key;
+    document.querySelector("select[name=mode]").value = mode;
+
+    /* The host page only touches its own DOM and listens for events. It never
+       reaches into the frame. */
+    ["ready", "preview", "lead", "error", "open", "close"].forEach((type) => {
+      document.addEventListener("hebelie:" + type, (event) => {
+        log("hebelie:" + type + " " + JSON.stringify(event.detail || {}));
+      });
+    });
+
+    const script = document.createElement("script");
+    script.src = "embed.js";
+    script.defer = true;
+    script.setAttribute("data-hebelie-key", key);
+    script.setAttribute("data-hebelie-mode", mode);
+    script.setAttribute("data-hebelie-target", "#widget-slot");
+    document.body.appendChild(script);
+    log("embed loaded for " + key.slice(0, 12) + "… (" + mode + ")");
+  } else {
+    log("No key yet. Paste a widget public key above, or open ?key=pk_…");
+  }
+
+  document.getElementById("keyForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    const next = new URLSearchParams();
+    const value = input.value.trim();
+    if (value) next.set("key", value);
+    next.set("mode", document.querySelector("select[name=mode]").value);
+    location.search = next.toString();
+  });
+</script>
+</body>
+</html>

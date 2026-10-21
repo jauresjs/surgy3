@@ -1,0 +1,598 @@
+/* Hebelie widget — frame stylesheet
+   1. Tokens
+   2. Shell
+   3. Treatments
+   4. Photo
+   5. Status & actions
+   6. Before / after
+   7. Preview list
+   8. Lead form
+   ==========================================================================
+   The frame is loaded on a customer's site, so nothing here may leak out:
+   every rule is scoped to .h-app, and the only outside input is the three
+   colour variables set by widget.js from the tenant's account row. No web
+   font is loaded — the frame must not add a render-blocking request to
+   someone else's page. */
+
+/* 1 · Tokens --------------------------------------------------------------- */
+:root {
+  color-scheme: light;
+  --h-primary: #5e7e6e;
+  --h-accent: #8eae9e;
+  --h-ink: #221f1c;
+  --h-muted: #7c726b;
+  --h-paper: #fffdfa;
+  --h-bg: #f7f3ed;
+  --h-border: #e6ded4;
+  --h-radius: 18px;
+  --h-font: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --h-serif: Georgia, "Times New Roman", serif;
+}
+
+* { box-sizing: border-box; }
+
+/* A class that sets display (the studio is flex) outranks the browser's own
+   [hidden] rule, so a hidden section would still take up space. The frame has
+   to say this once, loudly, or every failed load shows an empty studio. */
+[hidden] { display: none !important; }
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+}
+
+body {
+  font-family: var(--h-font);
+  color: var(--h-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 2 · Shell ---------------------------------------------------------------- */
+.h-app {
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  border: 1px solid var(--h-border);
+  border-radius: 26px;
+  background: color-mix(in srgb, var(--h-bg) 88%, white);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.h-head {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.15rem 0.25rem 0;
+}
+
+.h-logo {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  object-fit: contain;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.h-eyebrow {
+  margin: 0;
+  font-family: var(--h-serif);
+  font-size: 1.18rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.h-tagline {
+  margin: 0.1rem 0 0;
+  font-size: 0.8rem;
+  color: var(--h-muted);
+}
+
+.h-note {
+  margin: 0;
+  padding: 0.4rem 0.25rem 0.8rem;
+  font-size: 0.85rem;
+  color: var(--h-muted);
+  text-align: center;
+}
+
+.h-fatal {
+  margin: 0;
+  padding: 1.1rem 1rem;
+  border: 1px solid var(--h-border);
+  border-radius: var(--h-radius);
+  background: var(--h-paper);
+  text-align: center;
+}
+
+.h-fatal p {
+  margin: 0 0 0.85rem;
+  font-size: 0.9rem;
+  color: var(--h-ink);
+}
+
+.h-studio {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.h-card {
+  padding: 0.95rem 0.9rem 1rem;
+  border: 1px solid var(--h-border);
+  border-radius: var(--h-radius);
+  background: var(--h-paper);
+}
+
+.h-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.h-step {
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.h-step span:first-child {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--h-primary);
+  align-self: center;
+}
+
+/* 3 · Treatments ----------------------------------------------------------- */
+.h-treatments {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.h-treatment {
+  position: relative;
+  padding: 0.8rem 0.45rem;
+  text-align: center;
+  cursor: pointer;
+  border: 1px solid var(--h-border);
+  border-radius: 14px;
+  background: #fff;
+  font-family: inherit;
+  color: inherit;
+  transition: transform 0.18s cubic-bezier(0.34, 1.4, 0.64, 1), border-color 0.18s, background 0.18s;
+}
+
+.h-treatment:hover { transform: translateY(-2px); border-color: var(--h-accent); }
+.h-treatment:active { transform: scale(0.98); }
+
+.h-treatment.selected {
+  border-color: var(--h-primary);
+  background: color-mix(in srgb, var(--h-primary) 10%, white);
+  box-shadow: inset 0 0 0 1px var(--h-primary);
+}
+
+.h-treatment .h-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin: 0 auto 0.35rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--h-primary) 12%, white);
+  color: var(--h-primary);
+}
+
+.h-treatment.selected .h-icon { background: var(--h-primary); color: #fff; }
+
+.h-treatment .h-name {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.h-treatment .h-desc {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.68rem;
+  line-height: 1.3;
+  color: var(--h-muted);
+}
+
+.h-treatment .h-check {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--h-primary);
+  color: #fff;
+  opacity: 0;
+  transform: scale(0.5);
+  transition: opacity 0.15s, transform 0.15s;
+}
+
+.h-treatment.selected .h-check { opacity: 1; transform: scale(1); }
+
+/* A clinic that sells three treatments would otherwise leave one empty cell,
+   which reads as a missing card. The odd one out takes the whole row. */
+.h-treatments > .h-treatment:last-child:nth-child(odd) { grid-column: 1 / -1; }
+
+.h-hint,
+.h-count {
+  margin: 0.6rem 0 0;
+  text-align: center;
+  font-size: 0.72rem;
+  color: var(--h-muted);
+}
+
+.h-count { margin-top: 0.35rem; font-weight: 600; color: var(--h-primary); }
+
+/* 4 · Photo ---------------------------------------------------------------- */
+.h-photo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.h-photo-btn {
+  position: relative;
+  flex: 1 1 140px;
+  padding: 0.68rem 0.75rem;
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px dashed color-mix(in srgb, var(--h-primary) 45%, white);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--h-primary) 6%, white);
+  color: var(--h-primary);
+}
+
+.h-photo-btn:focus-within { outline: 2px solid var(--h-primary); outline-offset: 2px; }
+
+.h-photo-btn input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.h-photo-note {
+  margin: 0.55rem 0 0;
+  font-size: 0.72rem;
+  color: var(--h-muted);
+}
+
+.h-photo-preview {
+  display: none;
+  width: 100%;
+  max-height: 280px;
+  margin-top: 0.7rem;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 1px solid var(--h-border);
+}
+
+/* 5 · Status & actions ----------------------------------------------------- */
+.h-btn {
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--h-primary);
+  color: #fff;
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  text-decoration: none;
+  transition: filter 0.15s, opacity 0.15s;
+}
+
+.h-btn:hover:not(:disabled) { filter: brightness(1.06); }
+.h-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.h-btn-ghost {
+  background: transparent;
+  color: var(--h-primary);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--h-primary) 40%, white);
+}
+
+.h-next {
+  flex: none;
+  padding: 0.32rem 0.75rem;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--h-primary) 12%, white);
+  color: var(--h-primary);
+  font-family: inherit;
+  font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.h-status {
+  min-height: 1.1rem;
+  margin: 0;
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--h-muted);
+}
+
+.h-status:empty { display: none; }
+
+.h-spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 0.45rem;
+  vertical-align: -1px;
+  border: 2px solid color-mix(in srgb, var(--h-primary) 30%, white);
+  border-top-color: var(--h-primary);
+  border-radius: 50%;
+  animation: h-spin 0.8s linear infinite;
+}
+
+@keyframes h-spin { to { transform: rotate(360deg); } }
+
+/* 6 · Before / after ------------------------------------------------------- */
+.h-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  border: 5px solid #fff;
+  outline: 1px solid var(--h-border);
+  border-radius: 16px;
+  background: #ece7e0;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.h-frame:active { cursor: grabbing; }
+
+.h-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+
+.h-frame img.h-after {
+  position: absolute;
+  inset: 0;
+  clip-path: inset(0 0 0 48%);
+}
+
+.h-divider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.92);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.h-handle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 40px;
+  height: 40px;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 0;
+  border: 2px solid var(--h-primary);
+  border-radius: 50%;
+  background: #fff;
+  color: var(--h-primary);
+  cursor: ew-resize;
+  z-index: 3;
+}
+
+.h-handle.active,
+.h-handle:focus-visible { transform: translate(-50%, -50%) scale(1.08); }
+
+.h-badge {
+  position: absolute;
+  bottom: 10px;
+  z-index: 1;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.85);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.h-badge.left { left: 10px; }
+.h-badge.right { right: 10px; }
+
+/* 7 · Preview list --------------------------------------------------------- */
+.h-cache { margin-top: 0.75rem; }
+
+.h-cache-label {
+  margin: 0 0 0.4rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--h-muted);
+}
+
+.h-cache-list {
+  display: flex;
+  gap: 0.45rem;
+  overflow-x: auto;
+  padding-bottom: 0.2rem;
+}
+
+.h-cache-item {
+  flex: none;
+  width: 78px;
+  padding: 0;
+  border: 1px solid var(--h-border);
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  overflow: hidden;
+  font-family: inherit;
+  color: inherit;
+}
+
+.h-cache-item.active { border-color: var(--h-primary); box-shadow: 0 0 0 1px var(--h-primary); }
+
+.h-cache-item img { width: 100%; height: 62px; object-fit: cover; display: block; }
+
+.h-cache-item span {
+  display: block;
+  padding: 0.25rem 0.2rem;
+  font-size: 0.6rem;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.h-save {
+  margin-top: 0.7rem;
+  background: transparent;
+  color: var(--h-primary);
+  box-shadow: inset 0 0 0 1px var(--h-border);
+}
+
+.h-again {
+  margin-top: 0.55rem;
+  background: transparent;
+  color: var(--h-muted);
+  font-size: 0.78rem;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* 8 · Lead form ------------------------------------------------------------ */
+.h-lead-copy {
+  margin: 0 0 0.8rem;
+  font-size: 0.82rem;
+  color: var(--h-muted);
+}
+
+.h-form { display: grid; gap: 0.55rem; }
+
+.h-field {
+  display: grid;
+  gap: 0.2rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--h-muted);
+}
+
+.h-field input {
+  width: 100%;
+  padding: 0.62rem 0.7rem;
+  border: 1px solid var(--h-border);
+  border-radius: 10px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 0.86rem;
+  color: var(--h-ink);
+}
+
+.h-field input:focus {
+  outline: none;
+  border-color: var(--h-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--h-primary) 18%, transparent);
+}
+
+.h-consent {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.74rem;
+  line-height: 1.4;
+  color: var(--h-muted);
+}
+
+.h-consent input { margin-top: 0.15rem; flex: none; }
+
+.h-lead-error {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #b3402f;
+}
+
+.h-sent {
+  padding: 0.9rem 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--h-primary) 35%, white);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--h-primary) 8%, white);
+  text-align: center;
+}
+
+.h-sent p { margin: 0 0 0.7rem; font-size: 0.86rem; font-weight: 600; }
+
+.h-sent .h-btn + .h-btn { margin-top: 0.45rem; }
+
+/* Disclosure — a preview is never a promise. */
+.h-legal {
+  margin: 0;
+  padding: 0 0.4rem 0.15rem;
+  font-size: 0.66rem;
+  line-height: 1.45;
+  color: var(--h-muted);
+  text-align: center;
+}
+
+.h-legal a { color: inherit; }
+
+@media (max-width: 380px) {
+  .h-treatments { grid-template-columns: 1fr; }
+  .h-app { padding: 0.7rem; border-radius: 20px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .h-treatment,
+  .h-cache-item,
+  .h-btn { transition: none; }
+  .h-spinner { animation-duration: 1.6s; }
+}
+
+
+
