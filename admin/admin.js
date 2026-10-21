@@ -26,7 +26,7 @@ function showError(el, message) {
 
 function goToLogin() {
   sessionStorage.removeItem(TOKEN_KEY);
-  location.replace("/login/");
+  location.replace(hebelieRoot() + "login/");
 }
 
 async function api(path, options = {}) {
@@ -158,7 +158,7 @@ signOut.addEventListener("click", async () => {
 
 async function boot() {
   if (!token()) {
-    location.replace("/login/");
+    location.replace(hebelieRoot() + "login/");
     return;
   }
   const res = await api("/auth/me");

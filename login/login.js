@@ -31,7 +31,7 @@ async function refreshSession() {
     sessionStorage.removeItem(TOKEN_KEY);
     return;
   }
-  location.replace("/admin/");
+  location.replace(hebelieRoot() + "admin/");
 }
 
 signOutLocal.addEventListener("click", () => {
@@ -60,7 +60,7 @@ form.addEventListener("submit", async (event) => {
     const payload = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(payload.error || "Could not sign in");
     sessionStorage.setItem(TOKEN_KEY, payload.token);
-    location.href = "/admin/";
+    location.href = hebelieRoot() + "admin/";
   } catch (err) {
     showError(err.message);
   } finally {
