@@ -30,6 +30,10 @@ function presentKey(row: WidgetKeyRecord) {
     label: row.label || "",
     createdAt: row.created_at,
     lastUsedAt: row.last_used_at,
+    // The desk reads these instead of lastUsedAt to decide whether a key is
+    // live: only a page that is not ours can set them. See tenancy.ts.
+    lastParentOrigin: row.last_parent_origin,
+    lastParentAt: row.last_parent_at,
   };
 }
 

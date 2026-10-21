@@ -14,7 +14,7 @@ import { type SupabaseClient } from "npm:@supabase/supabase-js@2";
 // into a guessing game.
 export const MAX_ACTIVE_KEYS = 10;
 
-export const KEY_FIELDS = "id, public_key, label, created_at, last_used_at";
+export const KEY_FIELDS = "id, public_key, label, created_at, last_used_at, last_parent_origin, last_parent_at";
 
 export type WidgetKeyRecord = {
   id: string;
@@ -22,6 +22,10 @@ export type WidgetKeyRecord = {
   label: string | null;
   created_at: string;
   last_used_at: string | null;
+  // Where the widget was framed from. last_used_at cannot answer that, because
+  // the desk's own preview bumps it too; see tenancy.ts.
+  last_parent_origin: string | null;
+  last_parent_at: string | null;
 };
 
 // `pk_live_` makes a key recognisable in a support thread and greppable in a

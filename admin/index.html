@@ -26,6 +26,7 @@
       <div class="desk-tabs" id="deskTabs" role="tablist" aria-label="Desk sections">
         <button type="button" role="tab" id="tabLeads" aria-controls="viewLeads" aria-selected="true" data-view="leads" class="is-on">Leads</button>
         <button type="button" role="tab" id="tabWidget" aria-controls="viewWidget" aria-selected="false" data-view="widget">Widget</button>
+        <button type="button" role="tab" id="tabInstall" aria-controls="viewInstall" aria-selected="false" data-view="install">Install</button>
       </div>
 
       <div id="viewLeads" role="tabpanel" aria-labelledby="tabLeads">
@@ -80,7 +81,7 @@
             </label>
             <pre id="snippet" class="desk-snippet" tabindex="0"></pre>
             <div class="desk-actions">
-              <button type="button" id="copySnippet" class="btn-primary">Copy snippet</button>
+              <button type="button" id="copySnippet" class="btn-primary" data-copy="snippet">Copy snippet</button>
               <p id="copyOk" class="desk-ok" hidden>Copied to the clipboard.</p>
             </div>
           </div>
@@ -117,6 +118,38 @@
           </form>
           <p id="keyError" class="lead-error" hidden></p>
           <p id="keyOk" class="desk-ok" hidden></p>
+        </div>
+      </div>
+
+      <div id="viewInstall" role="tabpanel" aria-labelledby="tabInstall" hidden>
+        <div class="desk-head">
+          <div>
+            <p class="kicker">Go live</p>
+            <h1>Install</h1>
+          </div>
+          <p id="installWhere" class="lede"></p>
+        </div>
+
+        <div class="desk-card desk-install">
+          <h2>Where it goes</h2>
+          <p class="desk-meta">Pick the platform the clinic's site runs on. Each one names the exact file or screen, and the snippet below is already in the form that platform accepts.</p>
+          <div id="platformPicker" class="desk-platforms" role="group" aria-label="Site platform"></div>
+          <div id="installSteps" class="desk-step"></div>
+          <p id="installError" class="lead-error" hidden></p>
+          <p id="installStatus" class="desk-note"></p>
+          <div class="desk-actions">
+            <button type="button" id="copyInstall" class="btn-primary" data-copy="install">Copy snippet</button>
+            <p id="installCopyOk" class="desk-ok" hidden>Copied to the clipboard.</p>
+          </div>
+        </div>
+
+        <div class="desk-card desk-install">
+          <h2>Check it worked</h2>
+          <ol class="desk-install-check">
+            <li>Open the clinic's real site in a new tab. A theme editor, a customiser preview and a draft page often skip footer scripts, so a blank screen there proves nothing yet.</li>
+            <li>The widget appears where the slot sits. If it does not, the browser console names the reason: a blocked script, a stripped tag and a missing slot all read differently there.</li>
+            <li>Come back to this tab. It reads <em>Live on …</em> once the widget has served a page from the clinic's own site — the desk's own preview never counts.</li>
+          </ol>
         </div>
       </div>
     </section>

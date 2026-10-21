@@ -205,3 +205,68 @@
   opacity: 0;
   pointer-events: none;
 }
+
+/* Install tab -------------------------------------------------------------- */
+.desk-install { margin-bottom: 1rem; }
+.desk-install h2 {
+  margin: 0 0 0.35rem;
+  font-family: var(--font-serif);
+  font-size: 1.8rem;
+  font-weight: 500;
+}
+
+/* The platform row is a picker, not a mode: same pill as the widget controls,
+   but it wraps so five names never overflow a phone. */
+.desk-platforms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  width: fit-content;
+  max-width: 100%;
+  margin-top: 1rem;
+  padding: 0.25rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+}
+.desk-platforms button {
+  appearance: none;
+  border: 0;
+  padding: 0.4rem 0.95rem;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.desk-platforms button:hover { color: var(--ink); }
+.desk-platforms button.is-on {
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 2px 8px rgba(64, 48, 36, 0.08);
+}
+
+.desk-step { margin-top: 1.2rem; }
+.desk-step h3 { margin: 0; font-size: 1.05rem; }
+.desk-step .desk-meta { margin-top: 0.15rem; }
+.desk-install-steps { display: grid; gap: 0.7rem; margin: 0.9rem 0 0; padding-left: 1.2rem; }
+.desk-install-steps li { line-height: 1.45; }
+.desk-install-steps strong { display: block; font-size: 0.92rem; }
+.desk-install-steps p { margin: 0.15rem 0 0; color: var(--muted); font-size: 0.9rem; }
+.desk-step .desk-snippet { margin-top: 1rem; }
+.desk-step .desk-note { margin-top: 0.9rem; }
+.desk-install-check { display: grid; gap: 0.5rem; margin: 0.9rem 0 0; padding-left: 1.2rem; color: var(--muted); font-size: 0.9rem; line-height: 1.45; }
+.desk-install-check em { color: var(--sage-dark); font-style: normal; font-weight: 600; }
+
+/* The status line is the payoff of the whole tab, so it sits on its own rule
+   rather than reading as one more sentence of the note above it. */
+#installStatus {
+  margin-top: 1.1rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--border);
+}
+
+/* The status line is the proof, so the one state worth colouring is the live one. */
+.desk-note.is-live { color: var(--sage-dark); font-weight: 600; }

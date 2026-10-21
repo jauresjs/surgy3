@@ -205,10 +205,34 @@ export async function resolveTenant(
     if (!data || !record) throw new HttpError(401, "This widget key is not valid");
     account = record as Record<string, unknown>;
     publicKeyId = String(data.id);
-    await supabase
+    const now = new Date().toISOString();
+    /* A page of our own — the desk's preview — says nothing about the clinic's
+       site, so it stamps usage but not an origin. That is the difference between
+       "used" and "live", and it is what lets the Install tab report the second
+       without counting its own preview. */
+    /* Only the header counts here. embedderOrigin falls back to this request's
+       own Origin, and a frame opened on its own (a pasted frame URL, a suppressed
+       referrer) reports our widget host that way — which is not a clinic site. */
+    const parentOrigin = normalizeOrigin(req.headers.get("x-parent-origin") || "");
+    const fromClinic = Boolean(parentOrigin) && !isFirstParty(req);
+    const stamp: Record<string, unknown> = { last_used_at: now };
+    if (fromClinic) {
+      stamp.last_parent_origin = parentOrigin;
+      stamp.last_parent_at = now;
+    }
+    const { error: stampError } = await supabase
       .from("widget_keys")
-      .update({ last_used_at: new Date().toISOString() })
+      .update(stamp)
       .eq("id", publicKeyId);
+    /* A function deployed ahead of migration 20261021140000 has no new columns
+       to write. Retrying with the older shape keeps the one thing this line did
+       before — recording that the key was used — instead of losing both. */
+    if (stampError && fromClinic) {
+      await supabase
+        .from("widget_keys")
+        .update({ last_used_at: now })
+        .eq("id", publicKeyId);
+    }
   } else {
     const { data, error } = await supabase
       .from("accounts")
