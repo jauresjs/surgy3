@@ -4,6 +4,9 @@ An embeddable version of the studio for a clinic's own site. One `<script>` tag
 creates an iframe served from Hebelie's host; everything inside it is branded and
 priced (in the future, billed) per tenant.
 
+This page is documentation, not part of the embed: it lives in `docs/` rather
+than `widget/` because the Pages workflow publishes the `widget` folder whole.
+
 ```
 widget/
   embed.js      the loader a clinic pastes (also published as /widget/v1/embed.js)
@@ -54,10 +57,12 @@ defaults for every slot on a page. A slot that appears after the loader ran
 localhost, GitHub Pages, and a custom domain with no configuration.
 `/widget/v1/embed.js` is the versioned path a clinic should paste: the Pages
 workflow publishes it from this same `widget/embed.js`, and the day a breaking
-change is needed v1 is frozen as a real file and v2 ships beside it. The desk
-still hands out the unversioned URL, which keeps its own preview working on a
-plain `python -m http.server`; moving the snippet to v1 belongs with the install
-page.
+change is needed v1 is frozen as a real file and v2 ships beside it. The desk's
+snippet names that same v1 URL, and the **Div slot** form is the default there,
+with **Script tag** kept for a site that can only take a script. The desk's own
+preview still loads the unversioned `widget/embed.js`, because a desk opened
+under a plain `python -m http.server` has no `/widget/v1/` folder to load, and
+the preview should not be the thing that breaks when a version freezes.
 
 ## Events
 

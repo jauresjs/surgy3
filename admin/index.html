@@ -70,7 +70,11 @@
         <section id="widgetReady" hidden>
           <div class="desk-card desk-widget">
             <h2>Snippet</h2>
-            <p class="desk-meta">Paste this into the clinic site, just before <code>&lt;/body&gt;</code>. The key names the clinic; the script does the rest.</p>
+            <p class="desk-meta">Paste this into the clinic site, just before <code>&lt;/body&gt;</code>. The key names the clinic; the loader does the rest. The div is a slot, so it can sit wherever the widget should appear.</p>
+            <div class="desk-mode desk-form" role="group" aria-label="Snippet form">
+              <button type="button" data-form="slot" class="is-on" aria-pressed="true">Div slot</button>
+              <button type="button" data-form="tag" aria-pressed="false">Script tag</button>
+            </div>
             <label class="field desk-key-pick" id="keyPick" hidden>Key
               <select id="keySelect"></select>
             </label>

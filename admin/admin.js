@@ -34,11 +34,13 @@ const newKey = document.getElementById("newKey");
 const keyError = document.getElementById("keyError");
 const keyOk = document.getElementById("keyOk");
 const modeButtons = [...document.querySelectorAll(".desk-mode [data-mode]")];
+const formButtons = [...document.querySelectorAll(".desk-form [data-form]")];
 
 let platform = false;
 let keys = [];
 let maxKeys = 10;
 let mode = "inline";
+let snippetForm = "slot";
 let selectedKeyId = "";
 let previewSignature = "";
 let widgetPending = false;
@@ -92,19 +94,44 @@ function showView(name) {
 }
 
 /* The desk is served from the same place as widget/embed.js, so deriving the URL
-   from the desk's own address gives a working snippet on Pages, on a custom
-   domain and on localhost:8787 with no build step and no constant to update. */
-function embedSrc() {
+   from the desk's own address works on Pages, on a custom domain and on
+   localhost:8787 with no build step and no constant to update. */
+const WIDGET_VERSION = "v1";
+
+/* Two URLs, because the preview and the snippet answer different questions. The
+   preview is the desk talking to itself, so it loads the unversioned loader: a
+   desk opened under a plain `python -m http.server` has no /widget/v1/ folder,
+   and the preview should never be the thing that breaks when a version freezes.
+   The snippet is what a clinic pastes, so it names the version and keeps working
+   the day v2 ships beside v1. */
+function previewSrc() {
   return new URL("../widget/embed.js", location.href).href;
 }
 
+function snippetSrc() {
+  return new URL("../widget/" + WIDGET_VERSION + "/embed.js", location.href).href;
+}
+
 function snippetFor(publicKey) {
-  /* The closing tag is split so this line can never be mistaken for the end of
-     the script block that contains it. */
-  return `<script src="${embedSrc()}"
+  const src = snippetSrc();
+  /* A div slot is the install a clinic should paste: the slot says where the
+     widget goes, so the snippet never has to be kept in sync with the page's
+     markup. The tag form stays one click away for a site that can only add a
+     script — a tag manager, an embed field that takes no HTML. */
+  if (snippetForm === "tag") {
+    /* The closing tag is split so this line can never be mistaken for the end of
+       the script block that contains it. */
+    return `<script src="${src}"
         data-hebelie-key="${publicKey}"
         data-hebelie-mode="${mode}"
         defer><\/script>`;
+  }
+  /* A slot's own attributes win over the script tag's, so the mode rides on the
+     div: that keeps the slot self-describing, and lets two slots on one page
+     differ. Inline is the default, so only a floating install spells it out. */
+  const slotMode = mode === "floating" ? ` data-hebelie-mode="floating"` : "";
+  return `<div data-hebelie-widget="${publicKey}"${slotMode}></div>
+<script src="${src}" defer><\/script>`;
 }
 
 function currentKey() {
@@ -248,7 +275,7 @@ function mountPreview(publicKey) {
     : "Inline mode sits in the page flow, exactly as it will on the clinic site.";
 
   const script = document.createElement("script");
-  script.src = embedSrc();
+  script.src = previewSrc();
   /* document.currentScript is set for an inserted script, so embed.js reads its
      own URL and the key from this tag with no extra wiring. */
   script.dataset.hebelieKey = publicKey;
@@ -378,6 +405,22 @@ for (const button of modeButtons) {
     if (!key) return;
     snippet.textContent = snippetFor(key.publicKey);
     mountPreview(key.publicKey);
+  });
+}
+
+for (const button of formButtons) {
+  button.addEventListener("click", () => {
+    snippetForm = button.dataset.form === "tag" ? "tag" : "slot";
+    for (const other of formButtons) {
+      const on = other === button;
+      other.classList.toggle("is-on", on);
+      other.setAttribute("aria-pressed", on ? "true" : "false");
+    }
+    /* Only the snippet changes: the desk's own preview always mounts through the
+       tag form, because that is the one shape that can be inserted into a live
+       page after the loader has already run. */
+    const key = currentKey();
+    if (key) snippet.textContent = snippetFor(key.publicKey);
   });
 }
 
