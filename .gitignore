@@ -1,0 +1,4 @@
+# `supabase link` writes the linked project's ref and pooler URL here. It is
+# machine state, not source, and a commit that carried it would tell every other
+# checkout which project this one happened to be pointed at.
+supabase/.temp/
