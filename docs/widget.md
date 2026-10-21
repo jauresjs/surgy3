@@ -159,9 +159,12 @@ and `last_parent_at` (migration `20261021140000_widget_key_origin.sql`), never
 from `last_used_at`. `last_used_at` stamps on every `resolveTenant` call,
 including the desk's own preview, so it cannot tell a key that never left the
 desk from one serving a clinic's site. `tenancy.ts` writes the parent origin only
-for a page that is not first party, so "not seen on a site yet" means what it
-says. Deploy that migration before the function: a function running ahead of it
-falls back to `last_used_at` alone instead of failing the whole update.
+after `assertOriginAllowed` has accepted the page, and only when that page is not
+first party, so "not seen on a site yet" means what it says: a site the clinic
+never claimed gets a 403 and leaves the key untouched, rather than being named as
+the place the widget is live. Deploy that migration before the function: a
+function running ahead of it falls back to `last_used_at` alone instead of
+failing the whole update.
 
 An operator can still create one directly, for a key that bypasses the desk:
 
