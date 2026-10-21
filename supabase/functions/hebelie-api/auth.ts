@@ -1,4 +1,5 @@
 import { type SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { provisionDefaultKey } from "./keys.ts";
 
 export const PLATFORM_ADMIN_EMAIL = "tjaures.js@gmail.com";
 const PASSWORD_ITERATIONS = 120_000;
@@ -158,6 +159,16 @@ async function createClinic(
     .select("id")
     .single();
   if (staffError || !staff) throw new Error("Could not create the clinic");
+  // A clinic that cannot embed is not a clinic, so a new account starts with a
+  // key instead of an empty embed tab. This is deliberately swallowed: the
+  // account and its owner exist by now, and a widget key is never a reason to
+  // fail a signup. /admin/widget provisions one on the first desk visit, and the
+  // autoprovision migration covers anything older.
+  try {
+    await provisionDefaultKey(supabase, account.id as string);
+  } catch {
+    /* The desk heals this on first open. */
+  }
   return { account: account as Account, staffId: staff.id as string };
 }
 

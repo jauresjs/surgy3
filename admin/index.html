@@ -23,33 +23,98 @@
   </header>
   <main class="desk-main">
     <section id="board" hidden>
-      <div class="desk-head">
-        <div>
-          <p class="kicker">Studio desk</p>
-          <h1>Leads</h1>
-        </div>
-        <p id="leadCount" class="lede"></p>
+      <div class="desk-tabs" id="deskTabs" role="tablist" aria-label="Desk sections">
+        <button type="button" role="tab" id="tabLeads" aria-controls="viewLeads" aria-selected="true" data-view="leads" class="is-on">Leads</button>
+        <button type="button" role="tab" id="tabWidget" aria-controls="viewWidget" aria-selected="false" data-view="widget">Widget</button>
       </div>
-      <form id="createClinic" class="desk-card desk-create" hidden>
-        <h2>New clinic</h2>
-        <p class="desk-meta">Create an account for a medspa. They sign in with this email and password.</p>
-        <div class="desk-create-fields">
-          <label class="field">Clinic name
-            <input name="clinicName" type="text" autocomplete="organization" required>
-          </label>
-          <label class="field">Owner email
-            <input name="email" type="email" autocomplete="off" required>
-          </label>
-          <label class="field">Password
-            <input name="password" type="password" autocomplete="new-password" minlength="8" required>
-          </label>
+
+      <div id="viewLeads" role="tabpanel" aria-labelledby="tabLeads">
+        <div class="desk-head">
+          <div>
+            <p class="kicker">Studio desk</p>
+            <h1>Leads</h1>
+          </div>
+          <p id="leadCount" class="lede"></p>
         </div>
-        <p id="createError" class="lead-error" hidden></p>
-        <p id="createOk" class="desk-ok" hidden></p>
-        <button class="btn-generate" type="submit">Create clinic</button>
-      </form>
-      <p id="boardError" class="lead-error" hidden></p>
-      <div id="leadList" class="desk-list"></div>
+        <form id="createClinic" class="desk-card desk-create" hidden>
+          <h2>New clinic</h2>
+          <p class="desk-meta">Create an account for a medspa. They sign in with this email and password.</p>
+          <div class="desk-create-fields">
+            <label class="field">Clinic name
+              <input name="clinicName" type="text" autocomplete="organization" required>
+            </label>
+            <label class="field">Owner email
+              <input name="email" type="email" autocomplete="off" required>
+            </label>
+            <label class="field">Password
+              <input name="password" type="password" autocomplete="new-password" minlength="8" required>
+            </label>
+          </div>
+          <p id="createError" class="lead-error" hidden></p>
+          <p id="createOk" class="desk-ok" hidden></p>
+          <button class="btn-generate" type="submit">Create clinic</button>
+        </form>
+        <p id="boardError" class="lead-error" hidden></p>
+        <div id="leadList" class="desk-list"></div>
+      </div>
+
+      <div id="viewWidget" role="tabpanel" aria-labelledby="tabWidget" hidden>
+        <div class="desk-head">
+          <div>
+            <p class="kicker">Embed</p>
+            <h1>Widget</h1>
+          </div>
+          <p id="widgetCount" class="lede"></p>
+        </div>
+
+        <section id="widgetReady" hidden>
+          <div class="desk-card desk-widget">
+            <h2>Snippet</h2>
+            <p class="desk-meta">Paste this into the clinic site, just before <code>&lt;/body&gt;</code>. The key names the clinic; the script does the rest.</p>
+            <label class="field desk-key-pick" id="keyPick" hidden>Key
+              <select id="keySelect"></select>
+            </label>
+            <pre id="snippet" class="desk-snippet" tabindex="0"></pre>
+            <div class="desk-actions">
+              <button type="button" id="copySnippet" class="btn-primary">Copy snippet</button>
+              <p id="copyOk" class="desk-ok" hidden>Copied to the clipboard.</p>
+            </div>
+          </div>
+
+          <div class="desk-card desk-widget">
+            <h2>Live preview</h2>
+            <p class="desk-meta">This is the real embed script, not a picture of it. What you see here is what a visitor gets.</p>
+            <div class="desk-mode" role="group" aria-label="Widget mode">
+              <button type="button" data-mode="inline" class="is-on" aria-pressed="true">Inline</button>
+              <button type="button" data-mode="floating" aria-pressed="false">Floating</button>
+            </div>
+            <div id="widgetPreview" class="desk-preview"></div>
+            <p id="previewNote" class="desk-note"></p>
+          </div>
+        </section>
+
+        <section id="widgetEmpty" class="desk-card desk-widget" hidden>
+          <h2>No key yet</h2>
+          <p class="desk-meta">A key names this clinic inside the widget. Create one and the snippet appears above.</p>
+          <div class="desk-actions">
+            <button type="button" id="createFirstKey" class="btn-primary">Create a key</button>
+          </div>
+        </section>
+
+        <div class="desk-card desk-widget">
+          <h2>Keys</h2>
+          <p class="desk-meta">A key is a public name, not a secret: it is visible in the clinic's own page source. Revoke one the moment a site stops using it.</p>
+          <ul id="keyList" class="desk-key-list"></ul>
+          <form id="newKey" class="desk-key-new">
+            <label class="field">Name this key (optional)
+              <input name="label" type="text" maxlength="60" autocomplete="off" placeholder="Main site">
+            </label>
+            <button type="submit" class="btn-primary">New key</button>
+          </form>
+          <p id="keyError" class="lead-error" hidden></p>
+          <p id="keyOk" class="desk-ok" hidden></p>
+        </div>
+      </div>
     </section>
   </main>
 <script src="../site-root.js"></script>

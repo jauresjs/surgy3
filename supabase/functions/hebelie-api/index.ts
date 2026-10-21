@@ -8,6 +8,7 @@ import {
   type Treatment,
 } from "./prompts.ts";
 import { assertTreatmentsOffered, resolveTenant } from "./tenancy.ts";
+import { adminWidget, createWidgetKey, revokeWidgetKey } from "./widget.ts";
 
 // A custom header has to be named here or the browser fails the preflight and
 // the widget's calls never leave the frame.
@@ -89,6 +90,13 @@ Deno.serve(async (req) => {
     if (req.method === "POST" && path === "/auth/logout") return await logout(supabase, req, cors);
     if (req.method === "POST" && path === "/accounts") return await createClinicAccount(supabase, req, await readJson(req), cors);
     if (req.method === "GET" && path === "/admin/leads") return await adminLeads(req, supabase);
+    if (req.method === "GET" && path === "/admin/widget") return await adminWidget(supabase, req, cors);
+    if (req.method === "POST" && path === "/admin/widget/keys") {
+      return await createWidgetKey(supabase, req, await readJson(req), cors);
+    }
+    if (req.method === "POST" && path === "/admin/widget/keys/revoke") {
+      return await revokeWidgetKey(supabase, req, await readJson(req), cors);
+    }
     if (req.method === "GET" && path === "/admin/media") return await adminMedia(req, supabase);
     return json(404, { error: "Not found" });
   } catch (err) {

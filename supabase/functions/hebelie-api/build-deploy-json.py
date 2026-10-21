@@ -6,7 +6,9 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-NAMES = ("index.ts", "auth.ts", "prompts.ts", "deno.json")
+# Every module the entrypoint imports has to travel with it: Supabase only serves
+# the files that are uploaded, and a missing sibling is a boot-time import error.
+NAMES = tuple(sorted(path.name for path in ROOT.glob("*.ts"))) + ("deno.json",)
 
 
 def main() -> None:

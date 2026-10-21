@@ -87,14 +87,32 @@ All of it comes from the account row and `/widget/config`; nothing is compiled i
   clinic from previewing something it does not sell.
 - A tenant with no verified origin is unrestricted, which keeps a fresh install
   working before DNS is claimed.
+- The desk previews the widget from the desk's own page, not from the clinic's
+  site. Once domain claiming exists, that origin needs an explicit exemption in
+  `assertOriginAllowed`, or every desk preview will be refused as unclaimed.
 - The parent page never exposes its JavaScript to the frame, and the frame only
   trusts messages from its own `parent`.
 - A browser-side proof (a per-tenant CSP `frame-ancestors`, or a token minted for
   an origin the server can independently confirm) needs the frame served by an
   edge function instead of static hosting. That is the next hardening step, along
-  with a public logo bucket and an admin UI for keys and domain claiming.
+  with a public logo bucket and an admin UI for domain claiming.
 
 ## Getting a key
+
+Every account already has one. Sign in to the desk at `/admin/`, open the
+**Widget** tab, and the snippet is waiting: the key is created at signup
+(`provisionDefaultKey` in `createClinic`), backfilled for accounts that predate
+that (migration `20261021130000_widget_key_autoprovision.sql`), and provisioned on
+the first desk visit if a signup's key insert failed. Nothing has to be generated
+by hand before a clinic can embed the widget.
+
+That tab also runs a live preview through this exact `embed.js`, offers a Copy
+snippet button, and lists every key with a Revoke button. An account may hold up
+to 10 active keys (`MAX_ACTIVE_KEYS` in `keys.ts`); the desk refuses an 11th with
+a 409. A key is a public identifier, not a secret: it is visible in the clinic's
+own page source, and revocation is what limits abuse.
+
+An operator can still create one directly, for a key that bypasses the desk:
 
 ```sql
 insert into widget_keys (account_id, public_key, label)
@@ -104,7 +122,9 @@ returning public_key;
 ```
 
 Revoke with `update widget_keys set revoked_at = now() where public_key = '…'`.
-A revoked key stops resolving within a minute (the tenant cache TTL).
+Revoking through the desk also drops the cached tenant, so the key is refused on
+the very next request; a key revoked in SQL stops resolving within a minute (the
+tenant cache TTL).
 
 ## Testing locally
 
