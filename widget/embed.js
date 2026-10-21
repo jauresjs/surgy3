@@ -1,61 +1,154 @@
-/* Hebelie widget — embed loader
+/* Hebelie widget — embed loader (v1)
    ---------------------------------------------------------------------------
-   The only file a clinic pastes:
+   Two installs, one file.
 
-     <script src="https://<hebelie-host>/widget/embed.js"
-             data-hebelie-key="pk_live_xxx"
-             data-hebelie-mode="inline"
-             defer></script>
+   1 · A key on the tag, mounted where the tag sits (or at data-hebelie-target):
 
-   It builds the iframe, keeps it in handshake with the frame, and mirrors the
-   frame's height so the host page never shows a nested scrollbar. No
-   dependency, no globals beyond window.HebelieWidget, no styles that could
-   reach the host page's own elements. */
+         <script src="https://<hebelie-host>/widget/v1/embed.js"
+                 data-hebelie-key="pk_live_xxx"
+                 data-hebelie-mode="inline"
+                 defer></script>
+
+   2 · A placeholder the clinic can move anywhere in its own page:
+
+         <script src="https://<hebelie-host>/widget/v1/embed.js" defer></script>
+         <div data-hebelie-widget="pk_live_xxx"></div>
+
+   The second form is the one a clinic should paste: the div is the slot, so the
+   widget appears exactly where the div is, with no script attribute to keep in
+   sync and no CSS selector to break on a theme update.
+
+   Either way the loader builds the iframe, keeps it in handshake with the
+   frame, and mirrors the frame's height so the host page never shows a nested
+   scrollbar. No dependency, no globals beyond window.HebelieWidget, no styles
+   that could reach the host page's own elements. */
 (function () {
   "use strict";
 
-  /* A script injected with async, or moved by a tag manager, can leave
-     currentScript empty, so the tag with the key is the fallback. */
-  const script = document.currentScript || document.querySelector("script[data-hebelie-key]");
-  if (!script) return;
+  const VERSION = "1";
+  const DEFAULT_LABEL = "Preview a treatment";
+  const DEFAULT_HEIGHT = "520px";
+  /* 220 is the floor for a frame showing only an error card; the studio itself
+     is always taller. */
+  const HEIGHT_FLOOR = 220;
+  const HEIGHT_CEILING = 2600;
 
-  const key = (script.getAttribute("data-hebelie-key") || "").trim();
-  if (!key) {
-    console.error("[hebelie] data-hebelie-key is missing from the embed script");
+  /* ---- 1 · Where this copy of the loader lives -------------------------- */
+
+  /* A script injected with async, or moved by a tag manager, can leave
+     currentScript empty, so the tag itself is the fallback: the keyed tag
+     first, then any embed.js tag. */
+  function ownScript() {
+    const current = document.currentScript;
+    if (current && /\/embed(?:\.min)?\.js(?:[?#]|$)/.test(current.src || "")) return current;
+    return document.querySelector("script[data-hebelie-key]") ||
+      document.querySelector("script[src*='/widget/'][src$='embed.js']") ||
+      document.querySelector("script[src$='/embed.js']");
+  }
+
+  /* Without its own URL the loader cannot know which host serves the frame, and
+     guessing would point a clinic's page at the wrong place. */
+  function widgetRoot(src) {
+    let url;
+    try {
+      url = new URL(src);
+    } catch (err) {
+      return "";
+    }
+    if (url.protocol !== "https:" && url.protocol !== "http:") return "";
+    /* /widget/v1/embed.js is this same loader under a versioned path; the frame
+       always lives in the folder above the version. */
+    const dir = url.pathname.replace(/[^/]*$/, "").replace(/(?:^|\/)v\d+(?:\.\d+)*\/$/, "/");
+    return url.origin + dir;
+  }
+
+  const script = ownScript();
+  if (!script) {
+    console.error("[hebelie] the embed loader could not find its own script tag");
     return;
   }
 
-  const mode = (script.getAttribute("data-hebelie-mode") || "inline").toLowerCase() === "floating"
-    ? "floating"
-    : "inline";
-  const targetSelector = script.getAttribute("data-hebelie-target") || "";
-  const launcherLabel = script.getAttribute("data-hebelie-label") || "Preview a treatment";
-
-  let frameOrigin = "";
-  let frameUrl = "";
-  try {
-    frameOrigin = new URL(script.src).origin;
-    frameUrl = new URL("index.html", script.src).href + "?key=" + encodeURIComponent(key);
-  } catch (err) {
+  const root = widgetRoot(script.src);
+  if (!root) {
     console.error("[hebelie] the embed script needs an absolute src");
     return;
   }
 
+  const frameOrigin = new URL(root).origin;
+
+  /* ---- 2 · Reading an install ------------------------------------------ */
+
+  function attr(el, name) {
+    const value = el && el.getAttribute ? el.getAttribute(name) : null;
+    return value == null ? "" : String(value).trim();
+  }
+
+  /* A placeholder's own attributes win, then the script tag's, then the
+     default: one tag can carry the defaults for every placeholder on a page. */
+  function setting(el, name, fallback) {
+    return attr(el, name) || attr(script, name) || fallback;
+  }
+
+  function validKey(key) {
+    return /^[A-Za-z0-9_-]{6,120}$/.test(key);
+  }
+
+  function modeOf(value) {
+    return String(value).toLowerCase() === "floating" ? "floating" : "inline";
+  }
+
+  function themeOf(value) {
+    const theme = String(value).toLowerCase();
+    return theme === "dark" || theme === "auto" ? theme : "light";
+  }
+
+  function cornerOf(value) {
+    const corner = String(value).toLowerCase();
+    return corner === "bottom-left" || corner === "left" ? "left" : "right";
+  }
+
+  /* A single CSS length, because this reaches a style property: anything else
+     is a typo, and a typo should fall back to the stylesheet, not win. */
+  function widthOf(value) {
+    const width = String(value).trim();
+    return /^\d{1,4}(?:\.\d{1,3})?(?:px|rem|em|%|vw)$/.test(width) ? width : "";
+  }
+
+  function optionsFor(el, key) {
+    return {
+      key: key,
+      mode: modeOf(setting(el, "data-hebelie-mode", "inline")),
+      theme: themeOf(setting(el, "data-hebelie-theme", "light")),
+      corner: cornerOf(setting(el, "data-hebelie-launcher-position", "bottom-right")),
+      width: widthOf(setting(el, "data-hebelie-width", "")),
+      label: setting(el, "data-hebelie-label", DEFAULT_LABEL),
+    };
+  }
+
+  /* ---- 3 · The only styles this file adds ------------------------------- */
+
+  /* Every rule is prefixed with heb- and scoped to the loader's own elements, so
+     none of it can restyle the host page. Colours arrive through custom
+     properties, so a theme is one class instead of a second copy of the sheet. */
   const CSS = `
 .heb-embed{width:100%;max-width:560px;margin:0 auto;overflow:hidden}
 .heb-frame{width:100%;border:0;display:block;background:transparent;color-scheme:light}
-.heb-panel{position:fixed;right:16px;bottom:88px;z-index:2147483000;width:min(420px,calc(100vw - 32px));height:min(760px,calc(100vh - 120px));display:flex;flex-direction:column;overflow:hidden;border:1px solid rgba(0,0,0,.1);border-radius:20px;background:#fff;box-shadow:0 24px 70px rgba(20,16,12,.24);font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
+.heb-panel{--heb-surface:#fff;--heb-line:rgba(0,0,0,.1);--heb-ink:#221f1c;--heb-muted:#6b635c;--heb-hover:rgba(0,0,0,.06);position:fixed;right:16px;bottom:88px;z-index:2147483000;width:min(420px,calc(100vw - 32px));height:min(760px,calc(100vh - 120px));display:flex;flex-direction:column;overflow:hidden;border:1px solid var(--heb-line);border-radius:20px;background:var(--heb-surface);box-shadow:0 24px 70px rgba(20,16,12,.24);font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
 .heb-panel[hidden]{display:none}
-.heb-panel-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px 10px 16px;border-bottom:1px solid rgba(0,0,0,.08);background:#fff}
-.heb-panel-title{margin:0;font-size:13px;font-weight:600;letter-spacing:.02em;color:#221f1c}
-.heb-close{appearance:none;border:0;background:transparent;cursor:pointer;width:30px;height:30px;border-radius:50%;color:#6b635c;font-size:18px;line-height:1;display:grid;place-items:center}
-.heb-close:hover{background:rgba(0,0,0,.06)}
+.heb-panel-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px 10px 16px;border-bottom:1px solid var(--heb-line);background:var(--heb-surface)}
+.heb-panel-title{margin:0;font-size:13px;font-weight:600;letter-spacing:.02em;color:var(--heb-ink)}
+.heb-close{appearance:none;border:0;background:transparent;cursor:pointer;width:30px;height:30px;border-radius:50%;color:var(--heb-muted);font-size:18px;line-height:1;display:grid;place-items:center}
+.heb-close:hover{background:var(--heb-hover)}
 .heb-panel-body{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch}
 .heb-panel-body .heb-frame{height:auto;min-height:100%}
-.heb-launcher{position:fixed;right:16px;bottom:16px;z-index:2147483000;display:inline-flex;align-items:center;gap:8px;padding:13px 18px;border:0;border-radius:999px;background:#221f1c;color:#fff;font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;font-size:13px;font-weight:600;letter-spacing:.01em;cursor:pointer;box-shadow:0 12px 30px rgba(20,16,12,.28);transition:transform .16s ease,filter .16s ease}
+.heb-launcher{--heb-cta:#221f1c;--heb-cta-ink:#fff;position:fixed;right:16px;bottom:16px;z-index:2147483000;display:inline-flex;align-items:center;gap:8px;padding:13px 18px;border:0;border-radius:999px;background:var(--heb-cta);color:var(--heb-cta-ink);font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;font-size:13px;font-weight:600;letter-spacing:.01em;cursor:pointer;box-shadow:0 12px 30px rgba(20,16,12,.28);transition:transform .16s ease,filter .16s ease}
 .heb-launcher:hover{transform:translateY(-1px);filter:brightness(1.1)}
 .heb-launcher[hidden]{display:none}
-@media (max-width:520px){.heb-panel{left:8px;right:8px;bottom:76px;width:auto;height:calc(100vh - 96px)}.heb-launcher{right:12px;bottom:12px}}
+.heb-panel.heb-corner-left{right:auto;left:16px}
+.heb-launcher.heb-corner-left{right:auto;left:16px}
+.heb-theme-dark{--heb-surface:#17140f;--heb-line:rgba(255,255,255,.14);--heb-ink:#f2ece4;--heb-muted:#c8bfb4;--heb-hover:rgba(255,255,255,.1);--heb-cta:#f4f0ea;--heb-cta-ink:#17140f}
+@media (prefers-color-scheme:dark){.heb-theme-auto{--heb-surface:#17140f;--heb-line:rgba(255,255,255,.14);--heb-ink:#f2ece4;--heb-muted:#c8bfb4;--heb-hover:rgba(255,255,255,.1);--heb-cta:#f4f0ea;--heb-cta-ink:#17140f}}
+@media (max-width:520px){.heb-panel{left:8px;right:8px;bottom:76px;width:auto;height:calc(100vh - 96px)}.heb-panel.heb-corner-left{left:8px;right:8px}.heb-launcher{right:12px;bottom:12px}.heb-launcher.heb-corner-left{left:12px;right:auto}}
 @media (prefers-reduced-motion:reduce){.heb-launcher{transition:none}}
 `;
 
@@ -71,30 +164,35 @@
     document.dispatchEvent(new CustomEvent(name, { detail: detail }));
   }
 
-  function buildFrame() {
+  /* ---- 4 · The frame and its handshake --------------------------------- */
+
+  function hello(frame) {
+    if (!frame) return;
+    try {
+      frame.contentWindow.postMessage(
+        { source: "hebelie-embed", type: "hello", url: location.href },
+        frameOrigin,
+      );
+    } catch (err) {
+      /* A frame that cannot be reached will show its own error state. */
+    }
+  }
+
+  function buildFrame(options) {
     const frame = document.createElement("iframe");
-    frame.src = frameUrl;
+    frame.src = root + "index.html?key=" + encodeURIComponent(options.key);
     frame.title = "Treatment preview";
     frame.className = "heb-frame";
     frame.setAttribute("loading", "eager");
     frame.setAttribute("referrerpolicy", "strict-origin-when-cross-origin");
     /* The frame reports the page it is framed by; the handshake restates it
        with an origin the parent cannot forge. */
-    frame.addEventListener("load", () => {
-      try {
-        frame.contentWindow.postMessage(
-          { source: "hebelie-embed", type: "hello", url: location.href },
-          frameOrigin,
-        );
-      } catch (err) {
-        /* A frame that cannot be reached will show its own error state. */
-      }
-    });
+    frame.addEventListener("load", () => hello(frame));
     return frame;
   }
 
-  /* Every message is checked against this frame, so a second widget on the
-     same page cannot resize or re-key the first. */
+  /* Every message is checked against this frame, so a second widget on the same
+     page cannot resize or re-key the first. */
   function listen(frame, onResize) {
     window.addEventListener("message", (event) => {
       if (event.source !== frame.contentWindow) return;
@@ -102,51 +200,73 @@
       if (!data || data.source !== "hebelie-widget") return;
       if (data.type === "resize") {
         const height = Math.ceil(Number(data.height) || 0);
-        /* 220 is the floor for a frame showing only an error card; the studio
-           itself is always taller. */
-        if (height > 0) onResize(Math.max(220, Math.min(2600, height)));
+        if (height > 0) onResize(Math.max(HEIGHT_FLOOR, Math.min(HEIGHT_CEILING, height)));
         return;
       }
       emit("hebelie:" + data.type, data);
     });
   }
 
-  /* Inline: the frame sits in the page flow and sets its own height. */
-  function mountInline() {
+  /* ---- 5 · The two shapes a widget can take ---------------------------- */
+
+  /* Inline: the frame sits in the page flow, inside the slot the clinic chose,
+     and sets its own height. `anchor` is the script tag to mount beside when the
+     slot is the tag itself. */
+  function mountInline(options, host, anchor) {
     injectStyles();
+
     const holder = document.createElement("div");
     holder.className = "heb-embed";
-    const frame = buildFrame();
-    frame.style.height = "520px";
+    /* Only an explicit width overrides the stylesheet's 560px: a slot in a wide
+       column should not be narrowed by a default it never asked for. */
+    if (options.width) holder.style.maxWidth = options.width;
+
+    const frame = buildFrame(options);
+    frame.style.height = DEFAULT_HEIGHT;
     holder.appendChild(frame);
 
-    const target = targetSelector ? document.querySelector(targetSelector) : null;
-    if (target) target.appendChild(holder);
-    else if (script.parentNode) script.parentNode.insertBefore(holder, script.nextSibling);
-    else document.body.appendChild(holder);
+    if (host) {
+      host.appendChild(holder);
+    } else if (anchor && anchor.parentNode) {
+      anchor.parentNode.insertBefore(holder, anchor.nextSibling);
+    } else if (document.body) {
+      document.body.appendChild(holder);
+    } else {
+      return null;
+    }
 
     listen(frame, (height) => {
       frame.style.height = height + "px";
     });
 
-    return { frame: frame, open: function () {}, close: function () {} };
+    return {
+      holder: holder,
+      frame: function () { return frame; },
+      open: function () {},
+      close: function () {},
+    };
   }
 
-  /* Floating: nothing loads until the visitor asks for it. */
-  function mountFloating() {
+  /* Floating: nothing loads until the visitor asks for it. One launcher, one
+     panel, however many placeholders the page has with this mode. */
+  function mountFloating(options) {
     injectStyles();
+
+    const look = [];
+    if (options.theme !== "light") look.push("heb-theme-" + options.theme);
+    if (options.corner === "left") look.push("heb-corner-left");
 
     let frame = null;
 
     const launcher = document.createElement("button");
     launcher.type = "button";
-    launcher.className = "heb-launcher";
-    launcher.textContent = launcherLabel;
+    launcher.className = ["heb-launcher"].concat(look).join(" ");
+    launcher.textContent = options.label;
     launcher.setAttribute("aria-haspopup", "dialog");
     launcher.setAttribute("aria-expanded", "false");
 
     const panel = document.createElement("div");
-    panel.className = "heb-panel";
+    panel.className = ["heb-panel"].concat(look).join(" ");
     panel.hidden = true;
     panel.setAttribute("role", "dialog");
     panel.setAttribute("aria-modal", "false");
@@ -167,36 +287,26 @@
     const body = document.createElement("div");
     body.className = "heb-panel-body";
     panel.append(head, body);
-    document.body.append(launcher, panel);
 
-    function hello() {
-      if (!frame) return;
-      try {
-        frame.contentWindow.postMessage(
-          { source: "hebelie-embed", type: "hello", url: location.href },
-          frameOrigin,
-        );
-      } catch (err) {
-        /* The frame keeps its own error state. */
-      }
-    }
+    if (!document.body) return null;
+    document.body.append(launcher, panel);
 
     function openPanel() {
       if (!frame) {
-        frame = buildFrame();
+        frame = buildFrame(options);
         frame.style.height = "100%";
         body.appendChild(frame);
         listen(frame, (height) => {
           frame.style.height = height + "px";
         });
       } else {
-        hello();
+        hello(frame);
       }
       panel.hidden = false;
       launcher.hidden = true;
       launcher.setAttribute("aria-expanded", "true");
       closeButton.focus();
-      emit("hebelie:open", { key: key });
+      emit("hebelie:open", { key: options.key });
     }
 
     function closePanel() {
@@ -204,7 +314,7 @@
       launcher.hidden = false;
       launcher.setAttribute("aria-expanded", "false");
       launcher.focus();
-      emit("hebelie:close", { key: key });
+      emit("hebelie:close", { key: options.key });
     }
 
     launcher.addEventListener("click", openPanel);
@@ -218,24 +328,179 @@
       if (data && data.source === "hebelie-widget" && data.type === "close") closePanel();
     });
 
-    return { frame: function () { return frame; }, open: openPanel, close: closePanel };
+    return {
+      holder: launcher,
+      frame: function () { return frame; },
+      open: openPanel,
+      close: closePanel,
+    };
   }
 
-  /* A second copy of this script on the same page would create a second frame
-     for one key, which is never what the page wants. */
-  if (window.HebelieWidget && window.HebelieWidget.key === key) return;
+  /* ---- 6 · One runtime per page ---------------------------------------- */
 
-  const controller = mode === "floating" ? mountFloating() : mountInline();
+  /* A page can hold more than one copy of this tag: a tag manager, a clinic that
+     pasted the snippet twice, the desk re-mounting its preview. They all share
+     one registry, so no slot is mounted twice and one widget never answers
+     another's messages. */
+  function createRuntime() {
+    const instances = [];
+    /* A slot with a bad key is reported once, not once per scan: every copy of
+       the tag on the page runs a scan of its own. */
+    const reported = new WeakSet();
+    let observer = null;
 
-  window.HebelieWidget = {
-    key: key,
-    mode: mode,
-    open: controller.open,
-    close: controller.close,
-    /* Handy for a host page that wants to reach into the frame only when it
-       has to, e.g. to read a preview URL after the lead event. */
-    frame: mode === "floating"
-      ? function () { return controller.frame(); }
-      : function () { return controller.frame; },
-  };
+    /* A widget whose slot has left the document is gone, not hidden: the desk
+       empties its preview box between runs, and a single-page app may drop a
+       route. Both have to free the registry, or the next mount would look like
+       a duplicate and mount nothing at all. */
+    function alive(entry) {
+      return Boolean(entry && entry.holder && document.documentElement.contains(entry.holder));
+    }
+
+    function prune() {
+      for (let i = instances.length - 1; i >= 0; i--) {
+        if (!alive(instances[i])) instances.splice(i, 1);
+      }
+    }
+
+    function primary() {
+      prune();
+      for (let i = instances.length - 1; i >= 0; i--) {
+        if (instances[i].mode === "inline") return instances[i];
+      }
+      return instances[instances.length - 1] || null;
+    }
+
+    function attach(options, host, source, anchor) {
+      prune();
+      /* The same key twice is never what a page wants: two frames for one
+         clinic, both listening, both reporting height. */
+      const seen = instances.some((entry) => source === "container"
+        ? entry.host === host
+        : entry.source === "script" && entry.key === options.key);
+      if (seen) return null;
+
+      const instance = options.mode === "floating"
+        ? mountFloating(options)
+        : mountInline(options, host, anchor);
+      if (!instance) return null;
+
+      instance.key = options.key;
+      instance.mode = options.mode;
+      instance.host = host;
+      instance.source = source;
+      instances.push(instance);
+      return instance;
+    }
+
+    function scan() {
+      const slots = document.querySelectorAll("[data-hebelie-widget]");
+      for (let i = 0; i < slots.length; i++) {
+        const slot = slots[i];
+        const key = attr(slot, "data-hebelie-widget");
+        if (!validKey(key)) {
+          if (!reported.has(slot)) {
+            reported.add(slot);
+            console.error("[hebelie] data-hebelie-widget needs a widget public key", slot);
+          }
+          continue;
+        }
+        attach(optionsFor(slot, key), slot, "container");
+      }
+    }
+
+    /* A slot added after this script ran — a page builder, a tab that renders
+       late, a route change. Installed only on a page that uses the slot form, so
+       a keyed install never pays for an observer it cannot use. */
+    function observe() {
+      if (observer || typeof MutationObserver !== "function" || !document.documentElement) return;
+      observer = new MutationObserver((records) => {
+        for (let i = 0; i < records.length; i++) {
+          const added = records[i].addedNodes;
+          for (let j = 0; j < added.length; j++) {
+            const node = added[j];
+            if (node.nodeType !== 1) continue;
+            const itself = node.matches && node.matches("[data-hebelie-widget]");
+            if (itself || (node.querySelector && node.querySelector("[data-hebelie-widget]"))) {
+              scan();
+              return;
+            }
+          }
+        }
+      });
+      observer.observe(document.documentElement, { childList: true, subtree: true });
+    }
+
+    const api = {
+      version: VERSION,
+      instances: instances,
+      attach: attach,
+      scan: scan,
+      observe: observe,
+      open: function () { const top = primary(); if (top) top.open(); },
+      close: function () { const top = primary(); if (top) top.close(); },
+      frame: function () { const top = primary(); return top ? top.frame() : null; },
+    };
+
+    /* The global keeps the shape the first release published (key, mode, open,
+       close, frame) for a page written against it, with the registry underneath
+       for a page that holds more than one widget. */
+    Object.defineProperty(api, "key", {
+      enumerable: true,
+      get: function () { const top = primary(); return top ? top.key : ""; },
+    });
+    Object.defineProperty(api, "mode", {
+      enumerable: true,
+      get: function () { const top = primary(); return top ? top.mode : ""; },
+    });
+
+    return api;
+  }
+
+  /* ---- 7 · Start -------------------------------------------------------- */
+
+  const existing = window.HebelieWidget;
+  const runtime = existing && existing.version === VERSION && typeof existing.attach === "function"
+    ? existing
+    : createRuntime();
+
+  if (runtime !== existing) {
+    try {
+      window.HebelieWidget = runtime;
+    } catch (err) {
+      /* A page that froze the global still gets its slots mounted. */
+    }
+  }
+
+  /* Form 1: a key on the tag itself, mounted beside it or at the target. */
+  const scriptKey = attr(script, "data-hebelie-key");
+  if (scriptKey && !validKey(scriptKey)) {
+    console.error("[hebelie] data-hebelie-key is not a widget public key");
+  } else if (scriptKey) {
+    const targetPath = attr(script, "data-hebelie-target");
+    const target = targetPath ? document.querySelector(targetPath) : null;
+    if (targetPath && !target) {
+      console.error("[hebelie] nothing on the page matches data-hebelie-target:", targetPath);
+    }
+    runtime.attach(optionsFor(script, scriptKey), target, "script", script);
+  }
+
+  /* Form 2: placeholders. A deferred script runs with the document parsed, but
+     an async or in-head tag runs earlier, so wait for the parse when needed. */
+  function startSlots() {
+    if (!document.querySelector("[data-hebelie-widget]")) {
+      if (!scriptKey) {
+        console.warn("[hebelie] no data-hebelie-key on the script and no [data-hebelie-widget] slot on the page");
+      }
+      return;
+    }
+    runtime.scan();
+    runtime.observe();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", startSlots);
+  } else {
+    startSlots();
+  }
 })();

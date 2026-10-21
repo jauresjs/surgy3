@@ -6,7 +6,7 @@ priced (in the future, billed) per tenant.
 
 ```
 widget/
-  embed.js      the loader a clinic pastes
+  embed.js      the loader a clinic pastes (also published as /widget/v1/embed.js)
   index.html    the frame document
   widget.css    frame styles, scoped to .h-app
   widget.js     frame app: config, treatments, photo, generate, lead
@@ -15,9 +15,19 @@ widget/
 
 ## Install
 
+Two forms, one file. The placeholder form is the one a clinic should paste: the
+div is the slot, so the widget appears wherever the div is and nothing in the
+snippet has to be kept in sync with the page.
+
 ```html
-<div id="treatment-preview"></div>
-<script src="https://<hebelie-host>/widget/embed.js"
+<!-- the slot: move the div wherever the widget should appear -->
+<div data-hebelie-widget="pk_live_xxxxxxxxxxxxxxxx"></div>
+<script src="https://<hebelie-host>/widget/v1/embed.js" defer></script>
+```
+
+```html
+<!-- one tag, mounted beside itself or at data-hebelie-target -->
+<script src="https://<hebelie-host>/widget/v1/embed.js"
         data-hebelie-key="pk_live_xxxxxxxxxxxxxxxx"
         data-hebelie-mode="inline"
         data-hebelie-target="#treatment-preview"
@@ -26,13 +36,28 @@ widget/
 
 | attribute | default | meaning |
 | --- | --- | --- |
-| `data-hebelie-key` | required | The tenant's public widget key (`widget_keys.public_key`). |
+| `data-hebelie-widget` | required on a slot | The tenant's public widget key (`widget_keys.public_key`). |
+| `data-hebelie-key` | required on a tag | The same key, for the one-tag form. |
 | `data-hebelie-mode` | `inline` | `inline` sits in the page flow; `floating` adds a launcher button and a panel that loads on first click. |
-| `data-hebelie-target` | after the script | CSS selector for where an inline widget mounts. |
+| `data-hebelie-target` | after the script | CSS selector for where the tag-form inline widget mounts. A slot mounts inside itself, so this is ignored there. |
+| `data-hebelie-theme` | `light` | `light`, `dark` or `auto` (follows the visitor's `prefers-color-scheme`) for the launcher and panel chrome. The frame stays branded by the tenant. |
+| `data-hebelie-width` | `560px` | A single CSS length (`100%`, `720px`, `42rem`) for an inline widget's max width. |
+| `data-hebelie-launcher-position` | `bottom-right` | `bottom-right` or `bottom-left`, floating mode only. |
 | `data-hebelie-label` | `Preview a treatment` | Launcher text in floating mode. |
+
+A slot's own attributes win over the script tag's, so one tag can carry the
+defaults for every slot on a page. A slot that appears after the loader ran
+(a page builder, a tab that renders late) is picked up as it is inserted;
+`window.HebelieWidget.scan()` does the same scan on demand.
 
 `embed.js` derives the frame URL from its own `src`, so the same file works on
 localhost, GitHub Pages, and a custom domain with no configuration.
+`/widget/v1/embed.js` is the versioned path a clinic should paste: the Pages
+workflow publishes it from this same `widget/embed.js`, and the day a breaking
+change is needed v1 is frozen as a real file and v2 ships beside it. The desk
+still hands out the unversioned URL, which keeps its own preview working on a
+plain `python -m http.server`; moving the snippet to v1 belongs with the install
+page.
 
 ## Events
 
@@ -54,8 +79,9 @@ document.addEventListener("hebelie:lead", function (event) {
 });
 ```
 
-`window.HebelieWidget` exposes `open()`, `close()`, `key`, `mode` and `frame()`
-so a floating widget can be opened from a page CTA.
+`window.HebelieWidget` exposes `open()`, `close()`, `frame()`, `key`, `mode`,
+`scan()` — so a floating widget can be opened from a page CTA — plus `instances`,
+one entry per mounted widget for a page that holds more than one.
 
 ## What the tenant controls
 
@@ -87,9 +113,15 @@ All of it comes from the account row and `/widget/config`; nothing is compiled i
   clinic from previewing something it does not sell.
 - A tenant with no verified origin is unrestricted, which keeps a fresh install
   working before DNS is claimed.
-- The desk previews the widget from the desk's own page, not from the clinic's
-  site. Once domain claiming exists, that origin needs an explicit exemption in
-  `assertOriginAllowed`, or every desk preview will be refused as unclaimed.
+- Our own pages are exempt. `isFirstParty` in `tenancy.ts` lets a request through
+  when the page framing it is either the host the function is served from or one
+  listed in the `WIDGET_FIRST_PARTY_ORIGINS` secret (comma-separated). That is
+  what keeps the desk preview working once a clinic has verified a domain: the
+  preview frames the widget from the desk's own origin, so without the exemption
+  the first claimed domain would refuse our own product. The same list covers the
+  widget page itself and any hosted preview page on our host. A clinic cannot add
+  one of our origins to the list — `domains` belongs to the tenant, the list does
+  not.
 - The parent page never exposes its JavaScript to the frame, and the frame only
   trusts messages from its own `parent`.
 - A browser-side proof (a per-tenant CSP `frame-ancestors`, or a token minted for
@@ -145,3 +177,13 @@ supabase functions deploy hebelie-api --project-ref qqrcxbmbulfsvgbqjngz --no-ve
 The `--no-verify-jwt` flag is required: the widget and the site call the function
 without a Supabase session, and a plain deploy silently re-enables JWT
 verification, which turns every request into a 401.
+
+`WIDGET_FIRST_PARTY_ORIGINS` is the list of our own page origins, comma-separated
+(`https://jauresjs.github.io` for Pages, plus any custom domain). A tenant with no
+verified origin is unrestricted, so a missing value is invisible until the first
+clinic claims a domain — set it before that happens:
+
+```bash
+supabase secrets set WIDGET_FIRST_PARTY_ORIGINS=https://jauresjs.github.io \
+  --project-ref qqrcxbmbulfsvgbqjngz
+```

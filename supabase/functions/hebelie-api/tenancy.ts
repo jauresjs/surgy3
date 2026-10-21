@@ -109,6 +109,46 @@ async function loadTenant(supabase: SupabaseClient, account: Record<string, unkn
   } satisfies Tenant;
 }
 
+// Our own pages are not a tenant's site, and a clinic cannot make one of them
+// look like its own: `domains` belongs to the tenant, this list does not.
+//
+// Two sources, both configuration rather than data:
+//   - the host this function is served from, which is where the API itself
+//     lives and which no third-party page can claim;
+//   - WIDGET_FIRST_PARTY_ORIGINS, a comma-separated list of the hosts we serve
+//     our own pages from (the desk, and the preview page behind /p/<key>).
+//
+// The desk previews the widget from the desk's own origin, so without this the
+// first clinic to verify a domain would lock the desk out of its own preview —
+// and a hosted preview page would break the same way the day it ships.
+const ENV_FIRST_PARTY = "WIDGET_FIRST_PARTY_ORIGINS";
+
+function ownOrigin(req: Request) {
+  try {
+    const url = new URL(req.url);
+    return normalizeOrigin(`${url.protocol}//${url.host}`);
+  } catch {
+    return "";
+  }
+}
+
+function firstPartyOrigins(req: Request) {
+  const configured = (Deno.env.get(ENV_FIRST_PARTY) || "")
+    .split(",")
+    .map((value) => normalizeOrigin(value))
+    .filter(Boolean);
+  const own = ownOrigin(req);
+  return own ? [own, ...configured] : configured;
+}
+
+// True when the page doing the framing is one of ours. A caller with no origin
+// at all is not first party, but `assertOriginAllowed` lets it through anyway:
+// it is not a browser, and a third-party page cannot make one.
+export function isFirstParty(req: Request) {
+  const origin = embedderOrigin(req);
+  return Boolean(origin) && firstPartyOrigins(req).includes(origin);
+}
+
 // A widget may only be called from an origin the tenant has proven it owns.
 // A tenant with no verified origin yet is not restricted, because it has not
 // claimed anything to be restricted to. A call with no origin at all
@@ -118,6 +158,8 @@ export function assertOriginAllowed(req: Request, tenant: Tenant) {
   if (!tenant.origins.length) return;
   const origin = embedderOrigin(req);
   if (!origin) return;
+  // Our own desk and preview pages keep working whatever a clinic has claimed.
+  if (isFirstParty(req)) return;
   if (!tenant.origins.includes(origin)) {
     throw new HttpError(403, "This site is not allowed to use this widget");
   }

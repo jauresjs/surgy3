@@ -51,9 +51,16 @@
           <option value="floating">floating</option>
         </select>
       </label>
+      <label>Theme
+        <select name="theme" style="padding:0.55rem 0.65rem;border:1px solid #e6ded4;border-radius:10px;font:inherit">
+          <option value="light">light</option>
+          <option value="dark">dark</option>
+          <option value="auto">auto</option>
+        </select>
+      </label>
       <button type="submit">Load widget</button>
-      <p class="hint">Reloads this page with <code>?key=…&amp;mode=…</code> so the iframe is created
-        exactly as a customer's page would create it.</p>
+      <p class="hint">Reloads this page with <code>?key=…&amp;mode=…&amp;theme=…</code> so the
+        placeholder is filled exactly as a customer's page would fill it.</p>
     </form>
     <pre id="log" aria-live="polite"></pre>
   </section>
@@ -65,6 +72,9 @@
   const params = new URLSearchParams(location.search);
   const key = (params.get("key") || "").trim();
   const mode = params.get("mode") === "floating" ? "floating" : "inline";
+  const theme = params.get("theme") === "dark" || params.get("theme") === "auto"
+    ? params.get("theme")
+    : "light";
   const logEl = document.getElementById("log");
   const input = document.getElementById("keyInput");
 
@@ -76,6 +86,7 @@
   if (key) {
     input.value = key;
     document.querySelector("select[name=mode]").value = mode;
+    document.querySelector("select[name=theme]").value = theme;
 
     /* The host page only touches its own DOM and listens for events. It never
        reaches into the frame. */
@@ -85,14 +96,18 @@
       });
     });
 
+    /* The customer-facing install: one placeholder and one loader tag. The div
+       is the slot, so the widget appears exactly where the div sits. */
+    const slot = document.getElementById("widget-slot");
+    slot.setAttribute("data-hebelie-widget", key);
+    slot.setAttribute("data-hebelie-mode", mode);
+    slot.setAttribute("data-hebelie-theme", theme);
+
     const script = document.createElement("script");
     script.src = "embed.js";
     script.defer = true;
-    script.setAttribute("data-hebelie-key", key);
-    script.setAttribute("data-hebelie-mode", mode);
-    script.setAttribute("data-hebelie-target", "#widget-slot");
     document.body.appendChild(script);
-    log("embed loaded for " + key.slice(0, 12) + "… (" + mode + ")");
+    log("embed loaded for " + key.slice(0, 12) + "… (slot, " + mode + ", " + theme + ")");
   } else {
     log("No key yet. Paste a widget public key above, or open ?key=pk_…");
   }
@@ -103,6 +118,7 @@
     const value = input.value.trim();
     if (value) next.set("key", value);
     next.set("mode", document.querySelector("select[name=mode]").value);
+    next.set("theme", document.querySelector("select[name=theme]").value);
     location.search = next.toString();
   });
 </script>

@@ -22,8 +22,39 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+
+      # Only the site is published. Uploading `.` used to publish the whole
+      # repository, so https://<user>.github.io/<repo>/.cursor/mcp.json and
+      # /supabase/migrations/*.sql were publicly readable. This list is the
+      # site: a path that is missing here fails the build instead of quietly
+      # 404ing on a live page.
+      - name: Assemble the published site
+        run: |
+          set -euo pipefail
+          mkdir -p _site
+          touch _site/.nojekyll
+          for path in \
+            index.html app.js site.js site-root.js prompts.js styles.css robots.txt \
+            images blog admin login signup widget; do
+            if [ ! -e "$path" ]; then
+              echo "::error::the published site is missing $path"
+              exit 1
+            fi
+            cp -R "$path" _site/
+          done
+
+      # /widget/v1/embed.js is the versioned entry point a clinic should paste.
+      # It is published from widget/embed.js so there is one loader to maintain;
+      # the day a breaking change is needed, commit widget/v1/embed.js as a
+      # frozen copy and delete this step so v1 stops moving.
+      - name: Publish the versioned loader
+        run: |
+          set -euo pipefail
+          mkdir -p _site/widget/v1
+          cp _site/widget/embed.js _site/widget/v1/embed.js
+
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: _site
       - id: deployment
         uses: actions/deploy-pages@v4

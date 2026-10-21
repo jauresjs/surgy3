@@ -232,8 +232,9 @@ function clearPreview() {
   /* Floating mode mounts its launcher and panel on document.body rather than
      beside the script tag, so emptying the box does not remove them. */
   document.querySelectorAll(".heb-launcher, .heb-panel").forEach((node) => node.remove());
-  /* embed.js refuses to mount twice for the same key, so the previous run has to
-     be forgotten before the next one starts. */
+  /* The loader's registry is per page, and it keeps an instance only while its
+     slot is still in the document, so emptying the box above is what tells the
+     next run it may mount again. Dropping the global keeps the two in step. */
   delete window.HebelieWidget;
 }
 
