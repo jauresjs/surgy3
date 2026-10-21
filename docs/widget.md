@@ -64,6 +64,49 @@ preview still loads the unversioned `widget/embed.js`, because a desk opened
 under a plain `python -m http.server` has no `/widget/v1/` folder to load, and
 the preview should not be the thing that breaks when a version freezes.
 
+## Before the first customer
+
+One decision is deliberately still open: **where the widget is hosted**. No clinic
+has pasted a snippet yet, so nothing depends on the answer and changing it costs a
+line. The first paste ends that window.
+
+The snippet carries an absolute URL derived from the desk's own address, so the
+host is never written down in the repo:
+
+```js
+// admin/admin.js
+new URL("../widget/" + WIDGET_VERSION + "/embed.js", location.href).href
+```
+
+Move the desk and every key handed out afterwards names the new host. What a move
+cannot reach is a snippet already pasted: that text sits on the clinic's site,
+outside our reach, still pointing at `https://<old-host>/widget/v1/embed.js`. The
+old host has to keep serving it for as long as the last pasted snippet is live —
+until somebody edits a page we do not control. Two loaders then have to stay in
+step, with nothing watching them drift apart.
+
+`/widget/v1/` reads like protection against that, and is not yet. The Pages
+workflow republishes it from `widget/embed.js` on every deploy:
+
+```yaml
+mkdir -p _site/widget/v1
+cp _site/widget/embed.js _site/widget/v1/embed.js
+```
+
+So v1 is the current loader at a stable URL — versioned in name only, until a
+breaking change forces a frozen copy committed at `widget/v1/embed.js` and that
+copy step deleted. A host move before then freezes nothing; it changes what the
+single moving copy says.
+
+Nothing in the API hard-codes the host, which is why the decision can wait. A key
+is stamped as live by `Boolean(parentOrigin) && !isFirstParty(req)` — framed on a
+clinic page or not — whatever domain served the loader. When the host does move,
+two things move with it, both described above: `WIDGET_FIRST_PARTY_ORIGINS`, in the
+same change, or the desk's own preview fails the origin check the day a clinic
+verifies a domain; and the keys' `last_parent_origin` stamps, all NULL today — one
+written by a desk on the old host would stop matching `location.origin` and
+`widgetOrigin()`, and the desk would read it as the clinic's own origin.
+
 ## Events
 
 The loader re-emits frame events on the host document. Read `event.detail`, never
