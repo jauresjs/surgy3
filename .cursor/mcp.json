@@ -2,6 +2,12 @@
   "mcpServers": {
     "supabase": {
       "url": "https://mcp.supabase.com/mcp?project_ref=qqrcxbmbulfsvgbqjngz&features=docs%2Caccount%2Cdatabase%2Cdebugging%2Cdevelopment%2Cfunctions%2Cbranching"
+    },
+    "github": {
+      "url": "https://api.githubcopilot.com/mcp/",
+      "headers": {
+        "Authorization": "Bearer ${env:GITHUB_PERSONAL_ACCESS_TOKEN}"
+      }
     }
   }
 }
