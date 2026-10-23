@@ -8,7 +8,7 @@ import {
   type Treatment,
 } from "./prompts.ts";
 import { assertTreatmentsOffered, resolveTenant } from "./tenancy.ts";
-import { adminWidget, createWidgetKey, revokeWidgetKey } from "./widget.ts";
+import { adminWidget, configureWidget, createWidgetKey, revokeWidgetKey } from "./widget.ts";
 
 // A custom header has to be named here or the browser fails the preflight and
 // the widget's calls never leave the frame.
@@ -91,6 +91,9 @@ Deno.serve(async (req) => {
     if (req.method === "POST" && path === "/accounts") return await createClinicAccount(supabase, req, await readJson(req), cors);
     if (req.method === "GET" && path === "/admin/leads") return await adminLeads(req, supabase);
     if (req.method === "GET" && path === "/admin/widget") return await adminWidget(supabase, req, cors);
+    if (req.method === "POST" && path === "/admin/widget/configure") {
+      return await configureWidget(supabase, req, await readJson(req), cors);
+    }
     if (req.method === "POST" && path === "/admin/widget/keys") {
       return await createWidgetKey(supabase, req, await readJson(req), cors);
     }
@@ -146,6 +149,10 @@ async function widgetConfig(req: Request, supabase: SupabaseClient) {
         logoUrl: await tenantLogo(supabase, tenant.brand.logoPath),
       },
     },
+    // What the installed launcher says and how it looks, so widget/embed.js can
+    // seed its button from the line and then let this answer overwrite it. A
+    // clinic can restyle its button without repasting the snippet.
+    widget: tenant.button,
     treatments,
     consent: { text: CONSENT_TEXT, version: CONSENT_VERSION },
     maxTreatments: 3,

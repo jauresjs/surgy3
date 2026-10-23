@@ -130,24 +130,92 @@
           <p id="installWhere" class="lede"></p>
         </div>
 
+        <div class="desk-card desk-install desk-look">
+          <h2>The button</h2>
+          <p class="desk-meta">Say what the button says, where it sits and how it is coloured. Saving stores this against the key, so the widget on the site picks it up on the visitor's next page view — and the line below is built from it.</p>
+
+          <label class="field desk-cta-field" for="ctaLabel">Button wording
+            <input id="ctaLabel" name="ctaLabel" type="text" maxlength="40" autocomplete="off" placeholder="Preview a treatment">
+          </label>
+          <p id="ctaCount" class="desk-note"></p>
+
+          <div id="ctaStage" class="desk-cta-stage">
+            <span id="ctaPreview" class="desk-cta-preview">Preview a treatment</span>
+          </div>
+
+          <h3 class="desk-install-sub">Where it sits</h3>
+          <div class="desk-mode" role="group" aria-label="Button corner">
+            <button type="button" data-corner="bottom-right" class="is-on" aria-pressed="true">Bottom right</button>
+            <button type="button" data-corner="bottom-left" aria-pressed="false">Bottom left</button>
+          </div>
+          <div class="desk-mode" role="group" aria-label="Button theme">
+            <button type="button" data-theme="light" class="is-on" aria-pressed="true">Light</button>
+            <button type="button" data-theme="dark" aria-pressed="false">Dark</button>
+            <button type="button" data-theme="auto" aria-pressed="false">Auto</button>
+          </div>
+          <p class="desk-note">Auto follows the visitor's system theme. The studio itself always wears your brand.</p>
+
+          <h3 class="desk-install-sub">Brand colours</h3>
+          <p class="desk-meta">Used by the studio and behind the button. Leave a field empty to keep the Hebelie palette.</p>
+          <div class="desk-swatches">
+            <label class="field">Main colour
+              <span class="desk-swatch">
+                <input type="color" id="brandPrimaryPick" value="#2f4a3f" aria-label="Pick the main colour">
+                <input type="text" id="brandPrimary" maxlength="7" autocomplete="off" placeholder="Theme default" spellcheck="false">
+              </span>
+            </label>
+            <label class="field">Accent colour
+              <span class="desk-swatch">
+                <input type="color" id="brandAccentPick" value="#c9a227" aria-label="Pick the accent colour">
+                <input type="text" id="brandAccent" maxlength="7" autocomplete="off" placeholder="Theme default" spellcheck="false">
+              </span>
+            </label>
+          </div>
+
+          <h3 class="desk-install-sub">Treatment order</h3>
+          <p class="desk-meta">The order the studio lists treatments in. A visitor can combine up to three.</p>
+          <ol id="treatmentOrder" class="desk-order"></ol>
+
+          <div class="desk-actions desk-install-main">
+            <button type="button" id="saveInstall" class="btn-primary">Save &amp; generate the line</button>
+          </div>
+          <p id="saveOk" class="desk-ok" hidden></p>
+          <p id="saveError" class="lead-error" hidden></p>
+        </div>
+
         <div class="desk-card desk-install">
-          <h2>Where it goes</h2>
-          <p class="desk-meta">Pick the platform the clinic's site runs on. Each one names the exact file or screen, and the snippet below is already in the form that platform accepts.</p>
-          <div id="platformPicker" class="desk-platforms" role="group" aria-label="Site platform"></div>
-          <div id="installSteps" class="desk-step"></div>
+          <h2>Put it on your site</h2>
+          <p class="desk-meta">One line, pasted once. It adds your button to every page of the site, and the studio opens over the page — nothing to place, nothing to move later.</p>
+          <div class="desk-actions desk-install-main">
+            <button type="button" id="installOne" class="btn-primary">Install on my site</button>
+          </div>
+          <p id="installOneOk" class="desk-ok" hidden></p>
           <p id="installError" class="lead-error" hidden></p>
           <p id="installStatus" class="desk-note"></p>
-          <div class="desk-actions">
-            <button type="button" id="copyInstall" class="btn-primary" data-copy="install">Copy snippet</button>
-            <p id="installCopyOk" class="desk-ok" hidden>Copied to the clipboard.</p>
-          </div>
+
+          <h3 class="desk-install-sub">Which site is it?</h3>
+          <p class="desk-meta">Pick the platform the clinic's site runs on. The button above copies the line, and the sentence under it names the exact file or screen the line belongs in.</p>
+          <div id="platformPicker" class="desk-platforms" role="group" aria-label="Site platform"></div>
+          <p id="installWhereTo" class="desk-install-where"></p>
+          <p class="desk-note">Nobody to paste it for you? <a id="installMailto" href="#">Send it to my web person</a> — the email arrives with the line already in it.</p>
+
+          <details class="desk-disclosure">
+            <summary>Show me the code</summary>
+            <pre id="installSnippet" class="desk-snippet" tabindex="0"></pre>
+            <p id="installCodeNote" class="desk-note" hidden>Create a key on the Widget tab and the line appears here.</p>
+            <div class="desk-actions">
+              <button type="button" id="copyInstall" class="btn-ghost" data-copy="install">Copy the line</button>
+              <p id="installCopyOk" class="desk-ok" hidden>Copied to the clipboard.</p>
+            </div>
+            <p class="desk-note">Want the studio inside a page instead of a button over it? The <em>Widget</em> tab's Div slot form puts it exactly where you place the div.</p>
+          </details>
         </div>
 
         <div class="desk-card desk-install">
           <h2>Check it worked</h2>
           <ol class="desk-install-check">
             <li>Open the clinic's real site in a new tab. A theme editor, a customiser preview and a draft page often skip footer scripts, so a blank screen there proves nothing yet.</li>
-            <li>The widget appears where the slot sits. If it does not, the browser console names the reason: a blocked script, a stripped tag and a missing slot all read differently there.</li>
+            <li>The button you worded above appears in the corner you picked. If it does not, the browser console names the reason: a blocked script, a stripped tag and a missing key all read differently there.</li>
             <li>Come back to this tab. It reads <em>Live on …</em> once the widget has served a page from the clinic's own site — the desk's own preview never counts.</li>
           </ol>
         </div>

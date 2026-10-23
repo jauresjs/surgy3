@@ -18,9 +18,25 @@ widget/
 
 ## Install
 
-Two forms, one file. The placeholder form is the one a clinic should paste: the
-div is the slot, so the widget appears wherever the div is and nothing in the
-snippet has to be kept in sync with the page.
+Three forms, one file. The one-line form is what the desk hands a clinic: every
+setting rides in the loader's own URL, so a footer field that keeps a URL but
+strips attributes still gets a working widget, and there is nothing in the page
+to keep in sync.
+
+```html
+<script src="https://<hebelie-host>/widget/v1/embed.js?key=pk_live_xxxxxxxxxxxxxxxx&mode=floating&label=Book%20a%20consult" defer></script>
+```
+
+`label` is the button's wording; `launcher-position=bottom-left` and `theme=dark`
+(or `auto`) are appended the same way when a clinic picks them. The desk's Install
+tab writes that line from the settings it saved, so the URL it hands out already
+carries them. The wording is always spelled out, the corner and the theme only when
+they differ from the loader's defaults.
+
+`mode=floating` gives every page one *Preview a treatment* button and opens the
+studio over the page, which is why the line needs no place in the layout. The two
+forms below put the widget *inside* a page; the placeholder is the
+layout-controlled one, because the div is the slot.
 
 ```html
 <!-- the slot: move the div wherever the widget should appear -->
@@ -48,21 +64,81 @@ snippet has to be kept in sync with the page.
 | `data-hebelie-launcher-position` | `bottom-right` | `bottom-right` or `bottom-left`, floating mode only. |
 | `data-hebelie-label` | `Preview a treatment` | Launcher text in floating mode. |
 
-A slot's own attributes win over the script tag's, so one tag can carry the
-defaults for every slot on a page. A slot that appears after the loader ran
-(a page builder, a tab that renders late) is picked up as it is inserted;
-`window.HebelieWidget.scan()` does the same scan on demand.
+A slot's own attributes win over the script tag's, which win over a query on the
+script's URL, so one tag can carry the defaults for every slot on a page and a
+one-line install can carry them for itself. Every setting except
+`data-hebelie-widget` and `data-hebelie-target` has a URL twin:
+`data-hebelie-key` is `?key=`, `data-hebelie-mode` is `?mode=`, and so on for
+`theme`, `width`, `label` and `launcher-position`. A slot that appears after the
+loader ran (a page builder, a tab that renders late) is picked up as it is
+inserted; `window.HebelieWidget.scan()` does the same scan on demand.
 
 `embed.js` derives the frame URL from its own `src`, so the same file works on
 localhost, GitHub Pages, and a custom domain with no configuration.
 `/widget/v1/embed.js` is the versioned path a clinic should paste: the Pages
 workflow publishes it from this same `widget/embed.js`, and the day a breaking
 change is needed v1 is frozen as a real file and v2 ships beside it. The desk's
-snippet names that same v1 URL, and the **Div slot** form is the default there,
-with **Script tag** kept for a site that can only take a script. The desk's own
-preview still loads the unversioned `widget/embed.js`, because a desk opened
-under a plain `python -m http.server` has no `/widget/v1/` folder to load, and
-the preview should not be the thing that breaks when a version freezes.
+**Install** tab copies that URL as the one-line form and names the file or screen
+the line goes in; the **Widget** tab keeps the Div slot form (the default there)
+and the Script tag, for a clinic that wants the widget inside a particular page.
+The desk's own preview still loads the unversioned `widget/embed.js`, because a
+desk opened under a plain `python -m http.server` has no `/widget/v1/` folder to
+load, and the preview should not be the thing that breaks when a version freezes.
+
+### Configuring the button
+
+The desk's **Install** tab does not only hand out a line: it configures the widget,
+saves the settings server-side, and then draws the line from them.
+
+| setting | column | default |
+| --- | --- | --- |
+| wording on the launcher | `widget_keys.cta_label` | `Preview a treatment` |
+| corner | `widget_keys.launcher_position` | `bottom-right` |
+| launcher and panel theme | `widget_keys.theme` | `light` |
+| brand colours | `accounts.brand_primary`, `brand_accent` | none — the Hebelie palette |
+| treatment order | `account_treatments.sort_order` | the catalog's own order |
+
+Migration `20261022120000_widget_button.sql` adds the three key columns with those
+defaults, so every key that existed before it keeps rendering exactly as it did.
+`cta_label` is capped at 40 characters in the desk field, in `keys.ts`
+(`CTA_LABEL_MAX`) and by a check constraint, and it may not contain a newline: it
+travels in the installer's URL. The two colours are a strict `#rrggbb`, checked in
+`widget.ts` before they reach a column that carries the same expression.
+
+**The line seeds the first paint; the server has the last word.** `embed.js` mounts
+the launcher from `?label=`, `?launcher-position=` and `?theme=` immediately, then
+asks `GET /widget/config?key=…` and repaints the button from `widget.label`,
+`widget.position` and `widget.theme`. A clinic that changes the wording in the desk
+therefore does not have to repaste the snippet, and a page whose
+Content-Security-Policy blocks `connect-src` keeps a working button carrying the
+wording the line was given. The answer is cached in `localStorage` under
+`hebelie-look:<key>` on the clinic's own origin, which only saves the first paint —
+the request is still made on every page load. It is capped at 1500 ms, never blocks
+the button, and only runs for `mode=floating`, the one mode where the wording and
+the corner are visible.
+
+The brand colours and the treatment order need no loader work at all: the frame
+reads `/widget/config` when it opens, applies `--h-primary`/`--h-accent`
+(`widget.js`) and lists treatments in `account_treatments.sort_order` order
+(`widgetConfig` in `index.ts`). An empty `account_treatments` still means "the whole
+catalog", so the desk's first save is what materialises the list.
+
+Saving is `POST /admin/widget/configure` with `{ id, ctaLabel, launcherPosition,
+theme, brandPrimary, brandAccent, treatmentOrder }`. It writes the key, the
+account's brand and the treatment order, then echoes what is stored; the desk
+re-renders from that echo, so a capped label or a treatment the catalog dropped
+shows up as it really is. There is no transaction across the three writes: the
+treatments are upserted before the rows for treatments no longer offered are
+deleted, so an interrupted save leaves a superset rather than the empty set, which
+the frame would read as "sell everything". An absent `treatmentOrder` means "this
+build of the desk does not reorder", not "sell nothing", and is left alone. The
+call also drops the cached tenant for that key (`forgetTenant`), so the change
+reaches the clinic's site on its next request instead of up to a minute later.
+
+**Deploy order matters.** Run `20261022120000_widget_button.sql` before
+`supabase functions deploy hebelie-api`. A function deployed ahead of it falls back
+to the pre-migration select in `tenancy.ts` and serves the default wording, but the
+save fails, because `widget_keys.cta_label` is not there yet to write to.
 
 ## Before the first customer
 
@@ -186,16 +262,29 @@ that (migration `20261021130000_widget_key_autoprovision.sql`), and provisioned 
 the first desk visit if a signup's key insert failed. Nothing has to be generated
 by hand before a clinic can embed the widget.
 
+Signing up at `/signup/` lands the owner on the **Install** tab already signed in:
+the signup response carries a session token, the page stores it under the same
+`hebelie-desk-token` key `login.js` uses, and it opens `/admin/?view=install`.
+`admin.js` reads `?view=` before it decides a landing tab, so a link can name a
+tab — and a clinic with no leads otherwise lands on Install too, because that is
+the only thing left to do.
+
 That tab also runs a live preview through this exact `embed.js`, offers a Copy
 snippet button, and lists every key with a Revoke button. An account may hold up
 to 10 active keys (`MAX_ACTIVE_KEYS` in `keys.ts`); the desk refuses an 11th with
 a 409. A key is a public identifier, not a secret: it is visible in the clinic's
 own page source, and revocation is what limits abuse.
 
-The **Install** tab takes that same snippet and puts it where someone can act on
-it: a platform picker (WordPress, Shopify, Squarespace, Wix, custom HTML), the
-exact file or screen to paste into, and the snippet already in the form that
-platform will keep. Both tabs read one key list, so they cannot disagree.
+The **Install** tab is the one that turns a key into a live widget. Its first card
+configures the install (wording, corner, theme, brand colours, treatment order) and
+saves it against the key with `POST /admin/widget/configure`; the second copies the
+one-line install and names the exact file or screen the line belongs in for each
+platform (WordPress, Shopify, Squarespace, Wix, custom HTML); and a second route
+writes a work order into a `mailto:` — the line, where it goes, and the wording,
+corner, colours and treatment order — for a clinic that would rather send it to
+their web person. Both tabs read one key list, so they cannot disagree, and the
+settings ride on that list too: `adminWidget` answers with the keys, the account's
+brand and the treatment list in one call.
 
 Its status line answers "is it live yet?" from `widget_keys.last_parent_origin`
 and `last_parent_at` (migration `20261021140000_widget_key_origin.sql`), never

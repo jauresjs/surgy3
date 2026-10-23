@@ -14,9 +14,16 @@
          <script src="https://<hebelie-host>/widget/v1/embed.js" defer></script>
          <div data-hebelie-widget="pk_live_xxx"></div>
 
-   The second form is the one a clinic should paste: the div is the slot, so the
-   widget appears exactly where the div is, with no script attribute to keep in
-   sync and no CSS selector to break on a theme update.
+   3 · The whole install inside the tag's own URL, for a footer field that keeps
+       a URL but drops attributes:
+
+         <script src="https://<hebelie-host>/widget/v1/embed.js?key=pk_live_xxx&mode=floating" defer></script>
+
+   Form 3 is the one the desk hands a clinic: one line, every setting in the URL,
+   so there is nothing in the page to keep in sync. Form 2 is the layout-aware
+   version: the div is the slot, so the widget appears exactly where the div is.
+   Form 1 is for a page that can only take a script — a tag manager, or an embed
+   field that takes no HTML.
 
    Either way the loader builds the iframe, keeps it in handshake with the
    frame, and mirrors the frame's height so the host page never shows a nested
@@ -33,17 +40,42 @@
   const HEIGHT_FLOOR = 220;
   const HEIGHT_CEILING = 2600;
 
+  /* The studio's API, which is where /widget/config lives. widget.js carries the
+     same constant: the loader is served from the same host as the frame, so there
+     is nothing here to discover at runtime. */
+  const HEBELIE_API = "https://qqrcxbmbulfsvgbqjngz.supabase.co/functions/v1/hebelie-api";
+  /* A look is cosmetic and the button is already on the page, so the answer is
+     only worth waiting for as long as it stays invisible. */
+  const LOOK_TIMEOUT = 1500;
+  /* One entry per key, on the clinic's own origin. It saves the first paint, not
+     the request: the server always gets the last word. */
+  const LOOK_STORE = "hebelie-look:";
+
   /* ---- 1 · Where this copy of the loader lives -------------------------- */
 
   /* A script injected with async, or moved by a tag manager, can leave
-     currentScript empty, so the tag itself is the fallback: the keyed tag
-     first, then any embed.js tag. */
+     currentScript empty, so the tag itself is the fallback: the keyed tag first,
+     then the first embed.js tag on the page. The URL may carry a query — that is
+     the one-line install — so the tags are matched on their whole src rather
+     than on a selector that has to end where embed.js ends. */
+  const LOADER = /\/embed(?:\.min)?\.js(?:[?#]|$)/;
+
   function ownScript() {
     const current = document.currentScript;
-    if (current && /\/embed(?:\.min)?\.js(?:[?#]|$)/.test(current.src || "")) return current;
-    return document.querySelector("script[data-hebelie-key]") ||
-      document.querySelector("script[src*='/widget/'][src$='embed.js']") ||
-      document.querySelector("script[src$='/embed.js']");
+    if (current && LOADER.test(current.src || "")) return current;
+    const tags = document.getElementsByTagName("script");
+    for (let i = 0; i < tags.length; i++) {
+      if (attr(tags[i], "data-hebelie-key") && LOADER.test(tags[i].src || "")) return tags[i];
+    }
+    /* A page can serve another vendor's embed.js; /widget/ is the folder that
+       says the tag is ours, so it wins over a bare file name. */
+    for (let i = 0; i < tags.length; i++) {
+      if (LOADER.test(tags[i].src || "") && tags[i].src.indexOf("/widget/") !== -1) return tags[i];
+    }
+    for (let i = 0; i < tags.length; i++) {
+      if (LOADER.test(tags[i].src || "")) return tags[i];
+    }
+    return null;
   }
 
   /* Without its own URL the loader cannot know which host serves the frame, and
@@ -83,10 +115,24 @@
     return value == null ? "" : String(value).trim();
   }
 
-  /* A placeholder's own attributes win, then the script tag's, then the
-     default: one tag can carry the defaults for every placeholder on a page. */
+  /* An install can carry its settings in the script's own URL instead of on the
+     tag: .../embed.js?key=pk_live_xxx&mode=floating. That is the form the desk
+     hands out, because one line survives a footer field that keeps a URL but
+     strips attributes. Every attribute has a URL twin: data-hebelie-mode is
+     mode, data-hebelie-launcher-position is launcher-position, and so on. */
+  function query(name) {
+    try {
+      return new URL(script.src).searchParams.get(name) || "";
+    } catch (err) {
+      return "";
+    }
+  }
+
+  /* A placeholder's own attributes win, then the script tag's, then a query on
+     the script URL, then the default: one tag can carry the defaults for every
+     placeholder on a page, and a one-line install can carry them for itself. */
   function setting(el, name, fallback) {
-    return attr(el, name) || attr(script, name) || fallback;
+    return attr(el, name) || attr(script, name) || query(name.replace(/^data-hebelie-/, "")) || fallback;
   }
 
   function validKey(key) {
@@ -123,6 +169,95 @@
       width: widthOf(setting(el, "data-hebelie-width", "")),
       label: setting(el, "data-hebelie-label", DEFAULT_LABEL),
     };
+  }
+
+  /* ---- 2b · The look the server stores ---------------------------------- */
+
+  /* What the installed button says, where it sits and which theme it wears are
+     stored on the key and edited in the desk, so the loader asks /widget/config
+     instead of trusting the line forever. The line still seeds the first paint: a
+     clinic that typed the wording into the snippet gets it immediately, and a page
+     whose Content-Security-Policy blocks connect-src keeps a working button
+     rather than none. That is why every setting has a URL twin. */
+
+  /* The label ends up as a button's content, so it is read as text and never as
+     markup. 40 characters is the same cap the desk's field, the API and the
+     column all carry. */
+  function labelOf(value) {
+    const label = String(value == null ? "" : value).replace(/\s+/g, " ").trim();
+    return label.slice(0, 40) || DEFAULT_LABEL;
+  }
+
+  /* The desk and the database name the corner "bottom-left", while a
+     hand-written line may carry the older "left". Both mean the same corner. */
+  function positionOf(value) {
+    return cornerOf(value) === "left" ? "bottom-left" : "bottom-right";
+  }
+
+  function lookFrom(data) {
+    const widget = (data && data.widget) || {};
+    return {
+      label: labelOf(widget.label),
+      position: positionOf(widget.position || "bottom-right"),
+      theme: themeOf(widget.theme || "light"),
+    };
+  }
+
+  /* A look is cosmetic, so a page with storage disabled — private mode, a cookie
+     wall, a sandboxed frame — simply gets no cache. Every path here swallows its
+     own error rather than costing the widget its button. */
+  function readLook(key) {
+    try {
+      const raw = window.localStorage.getItem(LOOK_STORE + key);
+      if (!raw) return null;
+      const saved = JSON.parse(raw);
+      if (!saved || typeof saved.label !== "string") return null;
+      return {
+        label: labelOf(saved.label),
+        position: positionOf(saved.position),
+        theme: themeOf(saved.theme),
+      };
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function writeLook(key, look) {
+    try {
+      window.localStorage.setItem(LOOK_STORE + key, JSON.stringify(look));
+    } catch (err) {
+      /* Full or disabled storage: the next page view pays for one more request. */
+    }
+  }
+
+  /* One request, and never longer than the launcher can afford to wait. A slow or
+     missing API leaves whatever the line said in place. */
+  function fetchLook(key) {
+    return new Promise((resolve) => {
+      if (typeof fetch !== "function") {
+        resolve(null);
+        return;
+      }
+      const control = typeof AbortController === "function" ? new AbortController() : null;
+      let timer = 0;
+      const stop = (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      };
+      timer = setTimeout(() => {
+        if (control) control.abort();
+        stop(null);
+      }, LOOK_TIMEOUT);
+      fetch(HEBELIE_API + "/widget/config?key=" + encodeURIComponent(key), {
+        method: "GET",
+        mode: "cors",
+        credentials: "omit",
+        signal: control ? control.signal : undefined,
+      })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => stop(data ? lookFrom(data) : null))
+        .catch(() => stop(null));
+    });
   }
 
   /* ---- 3 · The only styles this file adds ------------------------------- */
@@ -252,21 +387,21 @@
   function mountFloating(options) {
     injectStyles();
 
-    const look = [];
-    if (options.theme !== "light") look.push("heb-theme-" + options.theme);
-    if (options.corner === "left") look.push("heb-corner-left");
+    const chrome = [];
+    if (options.theme !== "light") chrome.push("heb-theme-" + options.theme);
+    if (options.corner === "left") chrome.push("heb-corner-left");
 
     let frame = null;
 
     const launcher = document.createElement("button");
     launcher.type = "button";
-    launcher.className = ["heb-launcher"].concat(look).join(" ");
+    launcher.className = ["heb-launcher"].concat(chrome).join(" ");
     launcher.textContent = options.label;
     launcher.setAttribute("aria-haspopup", "dialog");
     launcher.setAttribute("aria-expanded", "false");
 
     const panel = document.createElement("div");
-    panel.className = ["heb-panel"].concat(look).join(" ");
+    panel.className = ["heb-panel"].concat(chrome).join(" ");
     panel.hidden = true;
     panel.setAttribute("role", "dialog");
     panel.setAttribute("aria-modal", "false");
@@ -290,6 +425,33 @@
 
     if (!document.body) return null;
     document.body.append(launcher, panel);
+
+    /* One painter for both elements, because the server's answer lands after the
+       button is already on the page: wording, corner and theme are the only things
+       it is allowed to change, and the frame is untouched. */
+    function paint(next) {
+      options.label = next.label;
+      options.theme = next.theme;
+      options.corner = next.position === "bottom-left" ? "left" : "right";
+      launcher.textContent = next.label;
+      for (const el of [launcher, panel]) {
+        el.classList.remove("heb-theme-dark", "heb-theme-auto", "heb-corner-left");
+        if (next.theme !== "light") el.classList.add("heb-theme-" + next.theme);
+        if (options.corner === "left") el.classList.add("heb-corner-left");
+      }
+    }
+
+    /* The line is the first paint; the server is the truth. A cached answer is
+       applied before the button settles, so a returning visitor sees no flicker,
+       and a fresh answer follows on its own — which is what lets a clinic change
+       the wording in the desk without repasting the snippet. */
+    const cached = readLook(options.key);
+    if (cached) paint(cached);
+    fetchLook(options.key).then((fresh) => {
+      if (!fresh) return;
+      writeLook(options.key, fresh);
+      paint(fresh);
+    });
 
     function openPanel() {
       if (!frame) {
@@ -472,8 +634,11 @@
     }
   }
 
-  /* Form 1: a key on the tag itself, mounted beside it or at the target. */
-  const scriptKey = attr(script, "data-hebelie-key");
+  /* Form 1: a key on the tag (or in the tag's URL), mounted beside it or at the
+     target. */
+  /* The key arrives on the tag or in the tag's own URL, and either one is a
+     complete install: the one-line form puts everything in the URL. */
+  const scriptKey = attr(script, "data-hebelie-key") || query("key");
   if (scriptKey && !validKey(scriptKey)) {
     console.error("[hebelie] data-hebelie-key is not a widget public key");
   } else if (scriptKey) {
@@ -490,7 +655,7 @@
   function startSlots() {
     if (!document.querySelector("[data-hebelie-widget]")) {
       if (!scriptKey) {
-        console.warn("[hebelie] no data-hebelie-key on the script and no [data-hebelie-widget] slot on the page");
+        console.warn("[hebelie] no key on the script (data-hebelie-key, or ?key= in its URL) and no [data-hebelie-widget] slot on the page");
       }
       return;
     }

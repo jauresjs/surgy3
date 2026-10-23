@@ -1,5 +1,6 @@
 import { type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { HttpError } from "./auth.ts";
+import { buttonOf, type WidgetButton } from "./keys.ts";
 
 // Which clinic a request belongs to is decided per request, never by a constant.
 //
@@ -28,6 +29,11 @@ export type Tenant = {
   // Origins this tenant has claimed. An origin only counts once verified.
   origins: string[];
   publicKeyId: string | null;
+  // What the installed launcher says, where it sits and which theme it wears.
+  // Read by widget/embed.js through /widget/config, so a clinic that edits the
+  // wording in the desk does not have to repaste the snippet. A request with no
+  // key (a page of ours) answers with the defaults.
+  button: WidgetButton;
 };
 
 const ACCOUNT_FIELDS = "id, name, slug, status, brand_primary, brand_accent, tagline, booking_url, logo_path";
@@ -75,7 +81,12 @@ function embedderOrigin(req: Request) {
   return normalizeOrigin(req.headers.get("x-parent-origin") || "") || requestOrigin(req);
 }
 
-async function loadTenant(supabase: SupabaseClient, account: Record<string, unknown>, publicKeyId: string | null) {
+async function loadTenant(
+  supabase: SupabaseClient,
+  account: Record<string, unknown>,
+  publicKeyId: string | null,
+  button: WidgetButton,
+) {
   const accountId = String(account.id);
   const [offered, claimed] = await Promise.all([
     supabase
@@ -106,6 +117,7 @@ async function loadTenant(supabase: SupabaseClient, account: Record<string, unkn
       .map((row) => normalizeOrigin(String(row.origin)))
       .filter(Boolean),
     publicKeyId,
+    button,
   } satisfies Tenant;
 }
 
@@ -211,6 +223,31 @@ async function stampKeyUsage(supabase: SupabaseClient, req: Request, publicKeyId
   }
 }
 
+/* The key row a widget request resolves through.
+   The three button columns arrived with migration 20261022120000. A function
+   deployed before it would otherwise fail every widget request over a wording
+   field, so an unknown-column error falls back to the shape this call had before
+   and buttonOf fills in the defaults — the same trade stampKeyUsage makes. */
+async function keyFor(supabase: SupabaseClient, publicKey: string) {
+  const { data, error } = await supabase
+    .from("widget_keys")
+    .select(`id, cta_label, launcher_position, theme, accounts (${ACCOUNT_FIELDS})`)
+    .eq("public_key", publicKey)
+    .is("revoked_at", null)
+    .maybeSingle();
+  if (!error) return data;
+  if (error.code !== "42703") throw error;
+
+  const fallback = await supabase
+    .from("widget_keys")
+    .select(`id, accounts (${ACCOUNT_FIELDS})`)
+    .eq("public_key", publicKey)
+    .is("revoked_at", null)
+    .maybeSingle();
+  if (fallback.error) throw fallback.error;
+  return fallback.data;
+}
+
 export async function resolveTenant(
   supabase: SupabaseClient,
   req: Request,
@@ -228,19 +265,15 @@ export async function resolveTenant(
 
   let account: Record<string, unknown> | null = null;
   let publicKeyId: string | null = null;
+  let button = buttonOf(null);
 
   if (publicKey) {
-    const { data, error } = await supabase
-      .from("widget_keys")
-      .select(`id, accounts (${ACCOUNT_FIELDS})`)
-      .eq("public_key", publicKey)
-      .is("revoked_at", null)
-      .maybeSingle();
-    if (error) throw error;
+    const data = await keyFor(supabase, publicKey);
     const record = Array.isArray(data?.accounts) ? data?.accounts[0] : data?.accounts;
     if (!data || !record) throw new HttpError(401, "This widget key is not valid");
     account = record as Record<string, unknown>;
     publicKeyId = String(data.id);
+    button = buttonOf(data as Record<string, unknown>);
     /* Nothing is stamped yet. Usage is written by stampKeyUsage, and only once
        assertOriginAllowed has let the request through: a page that is not the
        clinic's own is refused a few lines below, and recording it here would let
@@ -259,7 +292,7 @@ export async function resolveTenant(
 
   if (account!.status === "canceled") throw new HttpError(403, "This account is not active");
 
-  const tenant = await loadTenant(supabase, account!, publicKeyId);
+  const tenant = await loadTenant(supabase, account!, publicKeyId, button);
   cache.set(cacheKey, { at: Date.now(), tenant });
   assertOriginAllowed(req, tenant);
   if (publicKeyId) await stampKeyUsage(supabase, req, publicKeyId);

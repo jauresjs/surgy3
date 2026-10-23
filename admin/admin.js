@@ -36,11 +36,30 @@ const keyError = document.getElementById("keyError");
 const keyOk = document.getElementById("keyOk");
 const installWhere = document.getElementById("installWhere");
 const platformPicker = document.getElementById("platformPicker");
-const installSteps = document.getElementById("installSteps");
 const installError = document.getElementById("installError");
 const installStatus = document.getElementById("installStatus");
 const copyInstall = document.getElementById("copyInstall");
 const installCopyOk = document.getElementById("installCopyOk");
+const installOne = document.getElementById("installOne");
+const installOneOk = document.getElementById("installOneOk");
+const installWhereTo = document.getElementById("installWhereTo");
+const installMailto = document.getElementById("installMailto");
+const installSnippet = document.getElementById("installSnippet");
+const installCodeNote = document.getElementById("installCodeNote");
+const ctaLabel = document.getElementById("ctaLabel");
+const ctaCount = document.getElementById("ctaCount");
+const ctaStage = document.getElementById("ctaStage");
+const ctaPreview = document.getElementById("ctaPreview");
+const brandPrimary = document.getElementById("brandPrimary");
+const brandAccent = document.getElementById("brandAccent");
+const brandPrimaryPick = document.getElementById("brandPrimaryPick");
+const brandAccentPick = document.getElementById("brandAccentPick");
+const treatmentOrder = document.getElementById("treatmentOrder");
+const saveInstall = document.getElementById("saveInstall");
+const saveOk = document.getElementById("saveOk");
+const saveError = document.getElementById("saveError");
+const cornerButtons = [...document.querySelectorAll("[data-corner]")];
+const themeButtons = [...document.querySelectorAll("[data-theme]")];
 const modeButtons = [...document.querySelectorAll(".desk-mode [data-mode]")];
 const formButtons = [...document.querySelectorAll(".desk-form [data-form]")];
 
@@ -55,10 +74,25 @@ let widgetPending = false;
 /* Why the key list is empty, as distinct from the list being empty. The Widget
    and Install tabs both read it, and only the one on screen shows it. */
 let keysError = "";
+/* Install hands out the same line on every platform: the platform decides where
+   the line goes, not what it says. The div slot form stays on the Widget tab,
+   where a clinic that wants the widget inside a page can see what it looks like. */
 let installPlatform = "wordpress";
-/* Only Custom HTML accepts both shapes, so this choice is scoped to it: every
-   other platform pins the one form its own editor will keep. */
-let installForm = "slot";
+/* The clinic name, from /auth/me. Only the work-order email uses it, and only to
+   say whose site the button belongs on. */
+let clinicName = "";
+/* The colours stored on the account, as the server last reported them. */
+let brandState = { primary: "", accent: "" };
+/* Every treatment this clinic sells, in the order the server says the frame lists
+   them. The order is part of the widget, so the desk edits a copy of this. */
+let catalog = [];
+/* The settings the Install tab is editing: wording, corner, theme, colours and the
+   treatment order. It is live state rather than a reading of the DOM, because the
+   line, the preview button and the work-order email are all rebuilt from it. */
+let look = null;
+/* False means the next render must write `look` into the controls. Set after a
+   fetch or a save, cleared as soon as the controls own the values. */
+let lookSeeded = false;
 
 function token() {
   return sessionStorage.getItem(TOKEN_KEY) || "";
@@ -111,11 +145,27 @@ function ago(iso) {
   return when(iso);
 }
 
+/* A view is named by a tab and by a link (?view=install), so both paths validate
+   the name the same way: an inherited object key is not a panel in this desk. */
+function hasView(name) {
+  return Boolean(name) &&
+    Object.prototype.hasOwnProperty.call(views, name) &&
+    Boolean(views[name]);
+}
+
+/* ?view=install is how a link outside the desk names a tab. An unknown name is
+   ignored rather than reported: a stale bookmark should open the desk, not an
+   error state. */
+function requestedView() {
+  const name = new URLSearchParams(location.search).get("view") || "";
+  return hasView(name) ? name : "";
+}
+
 function showView(name) {
   /* A tab is the only thing that can name a view, so an unknown name is a desk
      bug rather than a state to render: Leads is the one panel that is always
      safe to land on. */
-  const target = views[name] ? name : "leads";
+  const target = hasView(name) ? name : "leads";
   for (const [view, panel] of Object.entries(views)) panel.hidden = view !== target;
   for (const tab of deskTabs.querySelectorAll("[data-view]")) {
     const on = tab.dataset.view === target;
@@ -164,12 +214,51 @@ function clinicOrigin(key) {
   return origin;
 }
 
+/* The wording the desk would save right now, capped exactly as the server caps
+   it, so the line can never carry something the save would refuse. */
+function draftLabel() {
+  const typed = String(ctaLabel.value || "").replace(/\s+/g, " ").trim().slice(0, 40);
+  return typed || "Preview a treatment";
+}
+
+/* One colour, or nothing. The text field is the source of truth: a colour input
+   cannot be empty, so an empty field is how a clinic asks for the Hebelie palette
+   back. A half-typed "#8b5e" is not a colour and never reaches the server. */
+function colourOf(value) {
+  const colour = String(value || "").trim();
+  if (!colour) return "";
+  const withHash = colour.charAt(0) === "#" ? colour : "#" + colour;
+  return /^#[0-9a-f]{6}$/i.test(withHash) ? withHash.toLowerCase() : "";
+}
+
+function themeName() {
+  if (!look || look.theme === "light") return "light";
+  return look.theme === "dark" ? "dark" : "automatic";
+}
+
+/* The line the desk hands a clinic: every setting rides in the loader's own URL, so
+   a footer field that keeps a URL but drops attributes still gets a working widget,
+   and there is nothing in the page to keep in sync. The wording is always spelled
+   out — it is the one setting a clinic reads in the line — while the corner and the
+   theme are only named when they differ from the loader's own defaults. */
+function lineSnippet(publicKey) {
+  const params = [
+    "key=" + encodeURIComponent(publicKey),
+    "mode=floating",
+    "label=" + encodeURIComponent(draftLabel()),
+  ];
+  if (look && look.launcherPosition === "bottom-left") params.push("launcher-position=bottom-left");
+  if (look && look.theme !== "light") params.push("theme=" + look.theme);
+  return `<script src="${snippetSrc()}?${params.join("&")}" defer><\/script>`;
+}
+
 function snippetFor(publicKey, form = snippetForm) {
   const src = snippetSrc();
-  /* A div slot is the install a clinic should paste: the slot says where the
-     widget goes, so the snippet never has to be kept in sync with the page's
-     markup. The tag form stays one click away for a site that can only add a
-     script — a tag manager, an embed field that takes no HTML. */
+  if (form === "line") return lineSnippet(publicKey);
+  /* A div slot is the install for a clinic that wants the widget inside the page:
+     the slot says where it goes, so the snippet never has to be kept in sync with
+     the page's markup. The tag form stays for a site that can only add a script —
+     a tag manager, an embed field that takes no HTML. */
   if (form === "tag") {
     /* The closing tag is split so this line can never be mistaken for the end of
        the script block that contains it. */
@@ -387,6 +476,15 @@ async function fetchKeys() {
     if (!res.ok) throw new Error(data.error || "Could not load the widget");
     keys = data.keys || [];
     maxKeys = Number(data.maxActiveKeys) || 10;
+    /* The Install tab configures a key and the account behind it, and both arrive
+       on this one call: two round trips could render controls that describe a
+       different clinic than the key they save against. */
+    brandState = {
+      primary: (data.brand && data.brand.primary) || "",
+      accent: (data.brand && data.brand.accent) || "",
+    };
+    catalog = Array.isArray(data.treatments) ? data.treatments : [];
+    lookSeeded = false;
     if (!keys.some((key) => key.id === selectedKeyId)) {
       selectedKeyId = keys.length ? keys[0].id : "";
     }
@@ -464,124 +562,37 @@ async function revokeKey(key, button) {
 
 /* Install tab ------------------------------------------------------------- */
 
-/* Where each platform keeps its site-wide footer, and which shape of snippet it
-   will actually keep. Naming a screen is the whole job here: "add the code to
-   your site" is the sentence that turns an install into a support thread. */
+/* Where each platform keeps its site-wide footer. Naming a screen is the whole job
+   here: "add the code to your site" is the sentence that turns an install into a
+   support thread, and one sentence per platform is enough to avoid it — the line
+   itself no longer changes shape between them. */
 const PLATFORMS = [
   {
     key: "wordpress",
     name: "WordPress",
-    summary: "Theme footer, or a snippets plugin",
-    form: "slot",
-    steps: [
-      {
-        title: "Appearance → Theme File Editor → footer.php",
-        body: "On a block theme there is no footer.php: use the Site Editor instead, then Patterns → Template Parts → Footer.",
-      },
-      {
-        title: "Paste just above the closing body tag",
-        body: "Slot first, script after it, both at the end of the footer: the page's own markup is then already there when the loader scans for the slot.",
-      },
-      {
-        title: "Or use a snippets plugin",
-        body: "Add a snippet, set its location to Footer, paste, and activate. A plugin carries the install through a theme update, which a theme file does not.",
-      },
-      {
-        title: "Save, then open the site in a new tab",
-        body: "The customiser preview often skips footer scripts, so it can look broken while the live page is fine.",
-      },
-    ],
-    note: "Paste both halves — the div and the script tag. The div on its own is only a slot; nothing mounts it until embed.js is on that page.",
+    paste: "in footer.php, just above the closing body tag — or the Footer template part in the Site Editor",
   },
   {
     key: "shopify",
     name: "Shopify",
-    summary: "theme.liquid, before the closing body tag",
-    form: "slot",
-    steps: [
-      {
-        title: "Online Store → Themes → Edit code",
-        body: "Edit the theme the storefront actually uses. A duplicate or an unpublished theme changes nothing a visitor sees.",
-      },
-      {
-        title: "Open layout/theme.liquid",
-        body: "Scroll to the closing body tag at the bottom of the file.",
-      },
-      {
-        title: "Paste just above it, then Save",
-        body: "This layout wraps every storefront template, so one paste covers the whole store and the slot can be moved page by page later.",
-      },
-      {
-        title: "Open the storefront",
-        body: "The theme editor's preview pane can hide the footer, so check the live URL rather than the preview.",
-      },
-    ],
-    note: "For one page instead of the whole store, keep the script in theme.liquid and move only the div into that page's template or a Custom Liquid section.",
+    paste: "in layout/theme.liquid, just above the closing body tag",
   },
   {
     key: "squarespace",
     name: "Squarespace",
-    summary: "Settings → Advanced → Code Injection → Footer",
-    form: "slot",
-    steps: [
-      {
-        title: "Settings → Advanced → Code Injection",
-        body: "Code Injection is a Business-plan feature. On a lower plan, use the Code Block route in the note below.",
-      },
-      {
-        title: "Paste into Footer, not Header",
-        body: "Footer injection runs on every page and after the body, which is exactly where the slot and the script belong.",
-      },
-      {
-        title: "Save, then open the live site",
-        body: "The editor preview does not run every injected script, so the live page is the only place the result counts.",
-      },
-    ],
-    note: "Without Code Injection, add a Code Block to the last section of the footer and paste the snippet there. Some templates strip script tags from a Code Block: if the widget stays blank and the console never mentions embed.js, that is the cause, and we can send an iframe form that needs no script.",
+    paste: "in Settings → Advanced → Code Injection → Footer",
   },
   {
     key: "wix",
     name: "Wix",
-    summary: "Settings → Custom Code → Body, all pages",
-    form: "slot",
-    steps: [
-      {
-        title: "Settings → Custom Code → Add Custom Code",
-        body: "In the editor, open Settings, then Custom Code. Name it Hebelie so it is easy to find again.",
-      },
-      {
-        title: "Paste, then choose Body — end and All pages",
-        body: "The slot has to be in the body and the script has to run after it, so the end of the body is the one place that satisfies both.",
-      },
-      {
-        title: "Apply, then Publish",
-        body: "Custom code runs on the published site only: the editor canvas and preview mode will not show the widget.",
-      },
-    ],
-    note: "Publish before judging the result. Code that is applied but not published looks exactly like a broken snippet.",
+    paste: "in Settings → Custom Code → Body — end, then All pages",
   },
   {
     key: "custom",
     name: "Custom HTML",
-    summary: "Anywhere in the page body",
-    /* The only platform that takes both shapes: an HTML block keeps a div, while
-       a tag manager or a text-only field may only accept the script. */
-    form: "any",
-    steps: [
-      {
-        title: "Put the slot where the widget should appear",
-        body: "Anywhere inside the body: a page, a post, a CMS template, or the HTML block of a landing-page builder. The widget renders exactly where the div is.",
-      },
-      {
-        title: "Put the script at the end of the page",
-        body: "Once per page, just before the closing body tag. A page that never runs the script shows an empty slot and nothing else.",
-      },
-      {
-        title: "If the host strips script tags",
-        body: "Many embed fields and page builders do. The browser console says so, and either a Content-Security-Policy entry or the iframe form is the way around it.",
-      },
-    ],
-    note: "A page with a Content-Security-Policy needs the script's own host allowed in script-src, and the same host in frame-src for the widget it mounts. Without both, the browser blocks the embed before any of our code runs.",
+    /* No platform at all: an HTML block, a page builder, a hand-edited theme.
+       The end of the body is the one place that is always safe. */
+    paste: "anywhere in the page body — the end of the page is safest",
   },
 ];
 
@@ -589,9 +600,40 @@ function currentPlatform() {
   return PLATFORMS.find((item) => item.key === installPlatform) || PLATFORMS[0];
 }
 
-/* A platform that accepts one form pins it; only Custom HTML reads the choice. */
-function formFor(item) {
-  return item.form === "any" ? installForm : item.form;
+/* The second route to a live install: the owner forwards the settings instead of
+   pasting them. A mailto needs no backend and no address — it opens whichever mail
+   client the owner already uses, with the To field left for them to fill.
+
+   It is a work order rather than a bare snippet. The web person is being asked to
+   paste one line, and the wording, the corner, the theme and the treatment order
+   are the parts they cannot read out of that line. */
+function mailtoFor(line) {
+  const item = currentPlatform();
+  const site = clinicName ? "the " + clinicName + " website" : "our website";
+  const body = [
+    "Hello,",
+    "",
+    "Could you add this to " + site + "? It is one line of code, and it adds a button visitors can press to preview a treatment.",
+    "",
+    line,
+    "",
+    "It goes " + item.paste + ".",
+    "It only needs to run once per page, and nothing else on the site changes.",
+    "",
+    "What we set up on our side:",
+    "· The button says: " + draftLabel(),
+    "· It sits in the " + (look && look.launcherPosition === "bottom-left" ? "bottom-left" : "bottom-right")
+      + " corner, in the " + themeName() + " theme.",
+  ];
+  if (look && (look.brandPrimary || look.brandAccent)) {
+    body.push("· Brand colours: " + [look.brandPrimary, look.brandAccent].filter(Boolean).join(" and ") + ".");
+  }
+  if (look && look.treatments.length) {
+    body.push("· The treatments, in this order: " + look.treatments.map((entry) => entry.label).join(", ") + ".");
+  }
+  body.push("", "Thank you.");
+  return "mailto:?subject=" + encodeURIComponent("Add our treatment preview button to the website")
+    + "&body=" + encodeURIComponent(body.join("\n"));
 }
 
 /* The one line a clinic comes back to read. last_used_at cannot answer it — the
@@ -629,85 +671,153 @@ function renderPlatforms() {
   }
 }
 
-function formToggle(item) {
-  const group = document.createElement("div");
-  group.className = "desk-mode desk-form";
-  group.setAttribute("role", "group");
-  group.setAttribute("aria-label", "Snippet form");
-  for (const form of ["slot", "tag"]) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.dataset.installForm = form;
-    button.textContent = form === "slot" ? "Div slot" : "Script tag";
-    const on = formFor(item) === form;
+/* The look controls are seeded, not bound: a render rewrites them from `look` only
+   when a fetch or a save has just replaced it, so typing in a field is never
+   overwritten by an unrelated redraw. */
+function seedLook() {
+  const key = currentKey();
+  look = {
+    ctaLabel: (key && key.ctaLabel) || "Preview a treatment",
+    launcherPosition: (key && key.launcherPosition) || "bottom-right",
+    theme: (key && key.theme) || "light",
+    brandPrimary: brandState.primary || "",
+    brandAccent: brandState.accent || "",
+    treatments: catalog.map((entry) => ({ id: entry.id, label: entry.label })),
+  };
+  lookSeeded = false;
+}
+
+function renderOrder() {
+  treatmentOrder.replaceChildren();
+  if (!look || !look.treatments.length) return;
+  look.treatments.forEach((entry, index) => {
+    const row = document.createElement("li");
+    row.className = "desk-order-row";
+    const name = document.createElement("span");
+    name.className = "desk-order-name";
+    name.textContent = entry.label;
+    const move = document.createElement("div");
+    move.className = "desk-order-move";
+    for (const step of [-1, 1]) {
+      const direction = step < 0 ? "up" : "down";
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "btn-ghost";
+      button.dataset.move = direction;
+      button.dataset.index = String(index);
+      button.textContent = step < 0 ? "↑" : "↓";
+      button.setAttribute("aria-label", "Move " + entry.label + " " + direction);
+      button.disabled = (step < 0 && index === 0) || (step > 0 && index === look.treatments.length - 1);
+      button.addEventListener("click", () => moveTreatment(index, step, direction));
+      move.appendChild(button);
+    }
+    row.append(name, move);
+    treatmentOrder.appendChild(row);
+  });
+}
+
+/* ↑ and ↓ rather than drag and drop: the list is short, and two buttons work with a
+   keyboard, on a touch screen and through a screen reader with no extra code. */
+function moveTreatment(index, step, direction) {
+  const next = index + step;
+  if (!look || next < 0 || next >= look.treatments.length) return;
+  const [entry] = look.treatments.splice(index, 1);
+  look.treatments.splice(next, 0, entry);
+  renderOrder();
+  /* A re-render drops the focused node, so focus follows the row that moved: a
+     keyboard user can press the same key again without hunting for the button. */
+  const again = treatmentOrder.querySelector('[data-move="' + direction + '"][data-index="' + next + '"]');
+  if (again) again.focus();
+  refreshInstall();
+}
+
+/* The preview is the launcher, drawn from the same values the loader will paint
+   from: wording, corner, theme, and the one colour a clinic sees before opening. */
+function paintPill() {
+  const label = draftLabel();
+  ctaPreview.textContent = label;
+  ctaCount.textContent = label.length + "/40 characters";
+  ctaStage.classList.toggle("is-left", Boolean(look && look.launcherPosition === "bottom-left"));
+  ctaStage.classList.toggle("is-dark", Boolean(look && look.theme === "dark"));
+  const primary = colourOf(brandPrimary.value);
+  if (primary) ctaPreview.style.background = primary;
+  else ctaPreview.style.removeProperty("background");
+}
+
+function renderLook() {
+  ctaLabel.value = look.ctaLabel;
+  brandPrimary.value = look.brandPrimary;
+  brandAccent.value = look.brandAccent;
+  /* A colour input cannot be empty, so its swatch only follows a colour the clinic
+     actually set; an empty field leaves the swatch showing what was last picked. */
+  if (colourOf(look.brandPrimary)) brandPrimaryPick.value = colourOf(look.brandPrimary);
+  if (colourOf(look.brandAccent)) brandAccentPick.value = colourOf(look.brandAccent);
+  for (const button of cornerButtons) {
+    const on = button.dataset.corner === look.launcherPosition;
     button.classList.toggle("is-on", on);
     button.setAttribute("aria-pressed", on ? "true" : "false");
-    button.addEventListener("click", () => {
-      installForm = form;
-      renderInstall();
-    });
-    group.appendChild(button);
   }
-  return group;
+  for (const button of themeButtons) {
+    const on = button.dataset.theme === look.theme;
+    button.classList.toggle("is-on", on);
+    button.setAttribute("aria-pressed", on ? "true" : "false");
+  }
+  renderOrder();
+  paintPill();
+  lookSeeded = true;
+}
+
+/* Everything downstream of the settings: the sentence naming the paste location,
+   the line itself, the email that carries it, and the status line that says whether
+   it is live. Called on every keystroke, because the line follows the wording. */
+function refreshInstall() {
+  const key = currentKey();
+  const line = key ? snippetFor(key.publicKey, "line") : "";
+  /* Every platform takes the same line; only the file or screen it belongs in
+     differs, and that is the one sentence worth placing beside the button that
+     copies it. */
+  installWhereTo.textContent = "Paste it " + currentPlatform().paste + ".";
+  installMailto.href = mailtoFor(line || "<the Hebelie line from our desk>");
+  installSnippet.textContent = line;
+  installSnippet.hidden = !line;
+  installCodeNote.hidden = Boolean(line);
+  copyInstall.disabled = !line;
+  installOne.disabled = !line;
+  saveInstall.disabled = !key;
+  installStatus.textContent = installStatusText(key);
+  installStatus.classList.toggle("is-live", Boolean(clinicOrigin(key)));
+  /* Any edit makes an older "Saved" untrue, and this runs on every edit. */
+  saveOk.hidden = true;
+}
+
+/* The answer to a save is the stored state, not what was typed: a capped label or a
+   treatment the catalog no longer carries comes back the way the next page view
+   will read it. */
+function applySaved(data) {
+  if (data.key && data.key.id) {
+    const at = keys.findIndex((entry) => entry.id === data.key.id);
+    if (at >= 0) keys[at] = data.key;
+  }
+  if (data.brand) brandState = { primary: data.brand.primary || "", accent: data.brand.accent || "" };
+  if (Array.isArray(data.treatments)) catalog = data.treatments;
+  lookSeeded = false;
+  renderInstall();
 }
 
 function renderInstall() {
-  const item = currentPlatform();
   const key = currentKey();
-  const code = key ? snippetFor(key.publicKey, formFor(item)) : "";
-
   installWhere.textContent = key ? "Key: " + (key.label || key.publicKey) : "No key yet";
-
-  installSteps.replaceChildren();
-
-  const heading = document.createElement("h3");
-  heading.textContent = item.name;
-  const summary = document.createElement("p");
-  summary.className = "desk-meta";
-  summary.textContent = item.summary;
-  installSteps.append(heading, summary);
-
-  const list = document.createElement("ol");
-  list.className = "desk-install-steps";
-  for (const step of item.steps) {
-    const entry = document.createElement("li");
-    const title = document.createElement("strong");
-    title.textContent = step.title;
-    const body = document.createElement("p");
-    body.textContent = step.body;
-    entry.append(title, body);
-    list.appendChild(entry);
+  if (!lookSeeded) {
+    seedLook();
+    renderLook();
   }
-  installSteps.appendChild(list);
-
-  if (item.form === "any") installSteps.appendChild(formToggle(item));
-
-  if (code) {
-    const pre = document.createElement("pre");
-    pre.className = "desk-snippet";
-    pre.id = "installSnippet";
-    pre.tabIndex = 0;
-    pre.textContent = code;
-    installSteps.appendChild(pre);
-  } else {
-    const empty = document.createElement("p");
-    empty.className = "desk-note";
-    empty.textContent = "Create a key on the Widget tab and the snippet appears here.";
-    installSteps.appendChild(empty);
-  }
-
-  if (item.note) {
-    const note = document.createElement("p");
-    note.className = "desk-note";
-    note.textContent = item.note;
-    installSteps.appendChild(note);
-  }
-
-  showError(installError, keysError);
-  copyInstall.disabled = !code;
+  refreshInstall();
+  /* The platform picker re-renders this panel, so a confirmation naming the
+     previous platform's file must not survive the choice. */
+  installOneOk.hidden = true;
   installCopyOk.hidden = true;
-  installStatus.textContent = installStatusText(key);
-  installStatus.classList.toggle("is-live", Boolean(clinicOrigin(key)));
+  showError(saveError, "");
+  showError(installError, keysError);
 }
 
 deskTabs.addEventListener("click", (event) => {
@@ -782,13 +892,121 @@ for (const button of document.querySelectorAll("[data-copy]")) {
     if (!key) return;
     const install = button.dataset.copy === "install";
     /* Each surface copies the shape it is showing: the Widget tab follows its own
-       toggle, while Install copies the form the chosen platform accepts. */
-    const code = install
-      ? snippetFor(key.publicKey, formFor(currentPlatform()))
-      : snippetFor(key.publicKey);
+       toggle, while Install hands out the one line every platform takes. */
+    const code = install ? snippetFor(key.publicKey, "line") : snippetFor(key.publicKey);
     copyCode(code, install ? installCopyOk : copyOk);
   });
 }
+
+/* The Install tab's one button: copy the line, then name the place it goes. The
+   clipboard write is the same path every other Copy button uses, so a desk
+   opened over plain http on a LAN address still copies through the fallback. */
+installOne.addEventListener("click", async () => {
+  const key = currentKey();
+  if (!key) return;
+  const item = currentPlatform();
+  await copyCode(snippetFor(key.publicKey, "line"), installOneOk);
+  installOneOk.textContent = "Copied. Paste it " + item.paste + ".";
+});
+
+/* The look controls ------------------------------------------------------- */
+
+/* Two controls, one colour. The text field decides: it is the one that can be
+   empty, and empty is how a clinic asks for the Hebelie palette back. A half-typed
+   "#8b5e" is not a colour yet, so the last valid one stays and the preview does not
+   flash between keystrokes. */
+function adoptColour(field, pick, slot) {
+  if (!look) return;
+  const colour = colourOf(field.value);
+  if (colour) {
+    look[slot] = colour;
+    pick.value = colour;
+  } else if (!field.value.trim()) {
+    look[slot] = "";
+  }
+  paintPill();
+  refreshInstall();
+}
+
+function adoptPick(field, pick, slot) {
+  if (!look) return;
+  field.value = pick.value;
+  look[slot] = colourOf(pick.value);
+  paintPill();
+  refreshInstall();
+}
+
+ctaLabel.addEventListener("input", () => {
+  paintPill();
+  refreshInstall();
+});
+brandPrimary.addEventListener("input", () => adoptColour(brandPrimary, brandPrimaryPick, "brandPrimary"));
+brandAccent.addEventListener("input", () => adoptColour(brandAccent, brandAccentPick, "brandAccent"));
+brandPrimaryPick.addEventListener("input", () => adoptPick(brandPrimary, brandPrimaryPick, "brandPrimary"));
+brandAccentPick.addEventListener("input", () => adoptPick(brandAccent, brandAccentPick, "brandAccent"));
+
+for (const button of cornerButtons) {
+  button.addEventListener("click", () => {
+    if (!look) return;
+    look.launcherPosition = button.dataset.corner === "bottom-left" ? "bottom-left" : "bottom-right";
+    for (const other of cornerButtons) {
+      const on = other === button;
+      other.classList.toggle("is-on", on);
+      other.setAttribute("aria-pressed", on ? "true" : "false");
+    }
+    paintPill();
+    refreshInstall();
+  });
+}
+
+for (const button of themeButtons) {
+  button.addEventListener("click", () => {
+    if (!look) return;
+    const theme = button.dataset.theme;
+    look.theme = theme === "dark" || theme === "auto" ? theme : "light";
+    for (const other of themeButtons) {
+      const on = other === button;
+      other.classList.toggle("is-on", on);
+      other.setAttribute("aria-pressed", on ? "true" : "false");
+    }
+    paintPill();
+    refreshInstall();
+  });
+}
+
+/* One save for all five settings. The server answers with what it stored, so the
+   desk re-renders from that rather than from what was typed: a capped label or a
+   treatment the catalog no longer carries then shows up as it really is. */
+saveInstall.addEventListener("click", async () => {
+  const key = currentKey();
+  if (!key || !look) return;
+  showError(saveError, "");
+  saveOk.hidden = true;
+  saveInstall.disabled = true;
+  try {
+    const res = await api("/admin/widget/configure", {
+      method: "POST",
+      body: JSON.stringify({
+        id: key.id,
+        ctaLabel: draftLabel(),
+        launcherPosition: look.launcherPosition,
+        theme: look.theme,
+        brandPrimary: look.brandPrimary,
+        brandAccent: look.brandAccent,
+        treatmentOrder: look.treatments.map((entry) => entry.id),
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "Could not save the button");
+    applySaved(data);
+    saveOk.hidden = false;
+    saveOk.textContent = "Saved. The line below is what the site runs — copy it, or send it to your web person.";
+  } catch (err) {
+    if (err.message !== "Sign in again") showError(saveError, err.message);
+  } finally {
+    saveInstall.disabled = !currentKey();
+  }
+});
 
 newKey.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -852,6 +1070,7 @@ async function boot() {
     return;
   }
   platform = !!profile.platform;
+  clinicName = profile.clinicName || "";
   who.hidden = false;
   who.textContent = profile.platform ? profile.email + " · Admin" : profile.email + " · " + profile.clinicName;
   signOut.hidden = false;
@@ -870,13 +1089,16 @@ async function boot() {
   } catch (err) {
     if (err.message !== "Sign in again") showError(boardError, err.message || "Could not load leads");
   }
-  /* A clinic with no leads has nothing to read and everything to set up, so it
-     lands on the widget. A clinic with a history keeps its leads, and the
-     platform admin always does: the desk is a support tool before it is a
-     first-run screen. */
-  const landing = platform || !leads || leads.length ? "leads" : "widget";
+  /* A link can name the tab: signup sends a brand-new owner straight to Install,
+     where one button copies the line for their site. Without a link, a clinic
+     with no leads has nothing to read and everything to set up, so it lands on
+     Install too. A clinic with a history keeps its leads, and the platform admin
+     always does: the desk is a support tool before it is a first-run screen. */
+  const landing = requestedView() ||
+    (platform || !leads || leads.length ? "leads" : "install");
   showView(landing);
-  if (landing === "widget") await loadWidget();
+  if (landing === "install") await loadInstall();
+  else if (landing === "widget") await loadWidget();
 }
 
 boot().catch(() => {});

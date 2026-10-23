@@ -248,17 +248,114 @@
   box-shadow: 0 2px 8px rgba(64, 48, 36, 0.08);
 }
 
-.desk-step { margin-top: 1.2rem; }
-.desk-step h3 { margin: 0; font-size: 1.05rem; }
-.desk-step .desk-meta { margin-top: 0.15rem; }
-.desk-install-steps { display: grid; gap: 0.7rem; margin: 0.9rem 0 0; padding-left: 1.2rem; }
-.desk-install-steps li { line-height: 1.45; }
-.desk-install-steps strong { display: block; font-size: 0.92rem; }
-.desk-install-steps p { margin: 0.15rem 0 0; color: var(--muted); font-size: 0.9rem; }
-.desk-step .desk-snippet { margin-top: 1rem; }
-.desk-step .desk-note { margin-top: 0.9rem; }
+/* The look card ------------------------------------------------------------ */
+
+/* The wording field is the widest thing in the card: it is the only setting that
+   changes a sentence a visitor reads, and 40 characters is the whole budget. */
+.desk-cta-field { display: block; margin-top: 1.1rem; font-size: 0.82rem; font-weight: 600; }
+
+/* A stage, not a swatch: the button is drawn where it will appear — against the
+   page, in the corner that was picked — so "bottom left" is something a clinic
+   sees rather than something it has to imagine. */
+.desk-cta-stage {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 0.9rem;
+  padding: 1.1rem 1.2rem;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--bg-deep);
+}
+.desk-cta-stage.is-left { justify-content: flex-start; }
+.desk-cta-stage.is-dark { background: #17140f; border-color: rgba(255, 255, 255, 0.16); }
+.desk-cta-preview {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 0.75rem 1.15rem;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 10px 26px rgba(20, 16, 12, 0.22);
+}
+/* Dark chrome flips the launcher, exactly as widget/embed.js does: a light pill on
+   a dark page. Auto follows the visitor, so its preview shows the light case and
+   the note beside the buttons says so. */
+.desk-cta-stage.is-dark .desk-cta-preview { background: #f4f0ea; color: #17140f; }
+
+/* The order is a list with two buttons per row rather than drag and drop: it works
+   with a keyboard, on a touch screen and through a screen reader unchanged. */
+.desk-order { display: grid; gap: 0.45rem; margin: 0.9rem 0 0; padding: 0; list-style: none; }
+.desk-order-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.5rem 0.6rem 0.5rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #fff;
+}
+.desk-order-name { font-size: 0.92rem; font-weight: 600; }
+.desk-order-move { display: flex; gap: 0.3rem; }
+.desk-order-move .btn-ghost { min-height: 32px; padding: 0.15rem 0.65rem; font-size: 0.9rem; line-height: 1; }
+.desk-order-move .btn-ghost:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* A colour input is a 40px swatch beside the hex it stands for: the text field is
+   what the API reads, and an empty field is the request for the Hebelie palette
+   back, which a colour input on its own could never express. */
+.desk-swatches { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 0.9rem; }
+.desk-swatches .field { flex: 1 1 12rem; font-size: 0.82rem; font-weight: 600; }
+.desk-swatch { display: flex; align-items: center; gap: 0.5rem; }
+.desk-swatches .desk-swatch input[type="color"] {
+  flex: 0 0 auto;
+  width: 42px;
+  height: 38px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+}
+.desk-swatches .desk-swatch input[type="text"] { flex: 1 1 auto; min-width: 0; }
 .desk-install-check { display: grid; gap: 0.5rem; margin: 0.9rem 0 0; padding-left: 1.2rem; color: var(--muted); font-size: 0.9rem; line-height: 1.45; }
 .desk-install-check em { color: var(--sage-dark); font-style: normal; font-weight: 600; }
+
+/* The Install tab's primary action is the only thing the tab asks for, so it
+   spans the card instead of sharing a row with a second button. */
+.desk-install-main { margin-top: 1.1rem; }
+.desk-install-main .btn-primary { width: 100%; }
+.desk-install-main .btn-primary:disabled { opacity: 0.55; cursor: default; box-shadow: none; }
+
+/* The platform question is a second, smaller heading inside the same card: it
+   changes where the line goes, not what the clinic has to do. */
+.desk-install-sub {
+  margin: 1.7rem 0 0;
+  padding-top: 1.3rem;
+  border-top: 1px solid var(--border);
+  font-family: var(--font-serif);
+  font-size: 1.35rem;
+  font-weight: 500;
+}
+
+/* The paste location is the answer the button gives, so it reads as a sentence
+   rather than as one more line of body copy. */
+.desk-install-where { margin: 0.9rem 0 0; font-weight: 600; line-height: 1.45; }
+
+/* Steps and code are optional depths: a clinic that needs them opens one, and
+   the tab stays a single button for a clinic that does not. */
+.desk-disclosure { margin-top: 1.2rem; padding-top: 0.95rem; border-top: 1px solid var(--border); }
+.desk-disclosure > summary { cursor: pointer; font-size: 0.9rem; font-weight: 600; }
+.desk-disclosure > summary::marker { color: var(--muted); }
+.desk-disclosure > summary:focus-visible { outline: 2px solid var(--sage); outline-offset: 3px; }
+.desk-disclosure .desk-snippet { margin-top: 0.9rem; }
 
 /* The status line is the payoff of the whole tab, so it sits on its own rule
    rather than reading as one more sentence of the note above it. */
